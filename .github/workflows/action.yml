@@ -15,13 +15,18 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Clone playit-agent source
+        run: |
+          git clone https://github.com/playit-cloud/playit-agent.git   # get the agent source :contentReference[oaicite:0]{index=0}
 
       - name: Build playit-agent
         working-directory: playit-agent
         run: |
-          brew install rust                    # install Rust toolchain :contentReference[oaicite:0]{index=0}
-          cargo build --release                # produces target/release/playit :contentReference[oaicite:1]{index=1}
+          brew install rust                    # install Rust toolchain 
+          cargo build --release                # outputs playit in target/release 
 
       - name: Install playit binary
         run: |
@@ -36,23 +41,23 @@ jobs:
             -configure -access -on \
             -privs -all \
             -restart -agent \
-            -menu                            # enable VNC :contentReference[oaicite:2]{index=2}
+            -menu
 
-      - name: Run setup.sh
+      - name: Run setup.sh (root-located)
         run: |
-          chmod +x .github/setup.sh
-          .github/setup.sh "$VNC_PASS" "$VNC_PASS"
+          chmod +x ./setup.sh
+          ./setup.sh "$VNC_PASS" "$VNC_PASS"
 
       - name: Authenticate playit.gg agent
         run: |
           nohup ./playit setup &
           sleep 10
 
-      - name: Start playit.gg tunnel
+      - name: Start playit.gg TCP tunnel
         run: |
           nohup ./playit tunnel tcp --port $APP_PORT &
           sleep 5
           ./playit tunnel list
 
-      - name: Keep alive
+      - name: Keep session alive
         run: sleep 3600
