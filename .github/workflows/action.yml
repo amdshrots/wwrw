@@ -1,20 +1,59 @@
-name: macOS
-on: 
+name: macOS RDP via playit.gg
+
+on:
   workflow_dispatch:
+
 defaults:
   run:
     shell: bash
 
+env:
+  # define your app port explicitly
+  APP_PORT: 8080            # ← must match the port your VNC server listens on :contentReference[oaicite:5]{index=5}
+
 jobs:
   build:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - run: |
-        curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 \ 
-          -o playit && chmod +x playit
-        ./playit setup   # click claim link in logs
-        nohup ./playit tunnel tcp --port $APP_PORT &
-        sleep 5
-        ./playit tunnel list
+    runs-on: macos-latest    # macOS 14 “Sonoma” on Apple Silicon :contentReference[oaicite:6]{index=6}
 
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download playit.gg agent for macOS
+        run: |
+          # use the Linux binary under Rosetta or build from source; 
+          # here we compile from source so it runs natively on macOS ARM
+          brew install rust        # install Rust toolchain
+          git clone https://github.com/playit-cloud/playit-agent.git
+          cd playit-agent
+          cargo build --release    # produces a darwin/arm64 binary :contentReference[oaicite:7]{index=7}
+          mv target/release/playit $GITHUB_WORKSPACE/playit
+          chmod +x $GITHUB_WORKSPACE/playit
+
+      - name: Enable and configure VNC (Screen Sharing)
+        run: |
+          sudo systemsetup -setremotelogin on
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate \
+            -configure -access -on \
+            -privs -all \
+            -restart -agent \
+            -menu         # enable VNC-based Screen Sharing
+
+      - name: Run setup.sh
+        run: |
+          chmod +x .github/setup.sh    # make sure script is executable :contentReference[oaicite:8]{index=8}
+          ./.github/setup.sh "$VNC_PASS" "$VNC_PASS"
+
+      - name: Authenticate playit.gg agent
+        run: |
+          nohup ./playit setup &       # prints a claim URL—click it in the logs 
+          sleep 10
+
+      - name: Start playit.gg TCP tunnel
+        run: |
+          nohup ./playit tunnel tcp --port $APP_PORT &
+          sleep 5
+          ./playit tunnel list         # shows your public endpoint
+
+      - name: Keep session alive
+        run: sleep 3600               # so you have time to connect
