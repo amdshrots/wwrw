@@ -47,20 +47,8 @@ defaults write com.apple.loginwindow DisableScreenLock -bool true
 defaults write com.apple.loginwindow AllowList -string '*'
 
 
-#install ngrok
-brew install --cask ngrok
-#install chrome
-brew install --cask google-chrome
-#install Chrome-remote-desktop
-brew install --cask chrome-remote-desktop-host
-#install microsoft-remote-desktop(optional)
-#brew install --cask microsoft-remote-desktop
-#team-viewer (test)
-brew install --cask teamviewer
-#Anydesk
-brew install --cask anydesk
-
-##Enable AnyDesk automatically
+curl -L https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64 \
+     -o playit && chmod +x playit
 
 defaults write com.apple.universalaccessAuthWarning "/Applications/AnyDesk.app" -bool true
 defaults write com.apple.universalaccessAuthWarning "/Applications/AnyDesk.app/Contents/MacOS/AnyDesk" -bool true
@@ -73,6 +61,5 @@ defaults write com.apple.universalaccessAuthWarning "com.philandro.anydesk" -boo
 
 
 
-#configure ngrok and start it
-ngrok authtoken $3
-ngrok tcp 5900 --region=in &
+./playit setup    
+./playit tunnel tcp --port 8080
