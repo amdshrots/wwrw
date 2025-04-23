@@ -13,24 +13,24 @@ env:
 jobs:
   build:
     runs-on: macos-latest
-
     steps:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
       - name: Clone playit-agent source
         run: |
-          git clone https://github.com/playit-cloud/playit-agent.git   # get the agent source :contentReference[oaicite:0]{index=0}
+          git clone https://github.com/playit-cloud/playit-agent.git   # get the agent source :contentReference[oaicite:2]{index=2}
 
       - name: Build playit-agent
         working-directory: playit-agent
         run: |
-          brew install rust                    # install Rust toolchain 
-          cargo build --release                # outputs playit in target/release 
+          brew install rust                                           # install Rust toolchain :contentReference[oaicite:3]{index=3}
+          cargo build --release                                      # outputs binaries under target/release :contentReference[oaicite:4]{index=4}
 
       - name: Install playit binary
         run: |
-          mv playit-agent/target/release/playit ./playit
+          # the CLI binary is named "playit-cli", so rename it to "playit"
+          mv playit-agent/target/release/playit-cli ./playit          # ← fixed name
           chmod +x ./playit
 
       - name: Enable VNC (Screen Sharing)
