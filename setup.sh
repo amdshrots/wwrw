@@ -9,7 +9,7 @@ VNC_PASS="$2"
 # disable spotlight indexing
 sudo mdutil -i off -a
 
-# create new user
+# create new user ‘akhil’
 sudo dscl . -create /Users/"$VNC_USER"
 sudo dscl . -create /Users/"$VNC_USER" UserShell /bin/bash
 sudo dscl . -create /Users/"$VNC_USER" RealName "Akhil"
@@ -19,7 +19,7 @@ sudo dscl . -create /Users/"$VNC_USER" NFSHomeDirectory /Users/"$VNC_USER"
 sudo dscl . -passwd /Users/"$VNC_USER" "$1"
 sudo createhomedir -c -u "$VNC_USER" > /dev/null
 
-# enable VNC
+# enable VNC (Screen Sharing)
 sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
   -configure -allowAccessFor -allUsers -privs -all
 sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
@@ -29,6 +29,6 @@ sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resourc
 echo "$VNC_PASS" | perl -we 'BEGIN { @k = unpack "C*", pack "H*", "1734516E8BA8C5E2FF1C39567390ADCA" }; $_ = <>; chomp; s/^(.{8}).*/$1/; @p = unpack "C*", $_; foreach (@k) { printf "%02X", $_ ^ (shift @p || 0) }; print "\n"' \
   | sudo tee /Library/Preferences/com.apple.VNCSettings.txt
 
-# restart agent
+# restart the remote-management agent
 sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
 sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate
