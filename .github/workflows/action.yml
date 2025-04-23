@@ -8,28 +8,27 @@ defaults:
     shell: bash
 
 env:
-  # define your app port explicitly
-  APP_PORT: 8080            # ← must match the port your VNC server listens on :contentReference[oaicite:5]{index=5}
+  APP_PORT: 8080
 
 jobs:
   build:
-    runs-on: macos-latest    # macOS 14 “Sonoma” on Apple Silicon :contentReference[oaicite:6]{index=6}
+    runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Download playit.gg agent for macOS
+      - name: Build playit-agent
+        working-directory: playit-agent
         run: |
-          # use the Linux binary under Rosetta or build from source; 
-          # here we compile from source so it runs natively on macOS ARM
-          brew install rust        # install Rust toolchain
-          git clone https://github.com/playit-cloud/playit-agent.git
-          cd playit-agent
-          cargo build --release    # produces a darwin/arm64 binary :contentReference[oaicite:7]{index=7}
-          mv target/release/playit $GITHUB_WORKSPACE/playit
-          chmod +x $GITHUB_WORKSPACE/playit
+          brew install rust                    # install Rust toolchain :contentReference[oaicite:0]{index=0}
+          cargo build --release                # produces target/release/playit :contentReference[oaicite:1]{index=1}
 
-      - name: Enable and configure VNC (Screen Sharing)
+      - name: Install playit binary
+        run: |
+          mv playit-agent/target/release/playit ./playit
+          chmod +x ./playit
+
+      - name: Enable VNC (Screen Sharing)
         run: |
           sudo systemsetup -setremotelogin on
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
@@ -37,23 +36,23 @@ jobs:
             -configure -access -on \
             -privs -all \
             -restart -agent \
-            -menu         # enable VNC-based Screen Sharing
+            -menu                            # enable VNC :contentReference[oaicite:2]{index=2}
 
       - name: Run setup.sh
         run: |
-          chmod +x .github/setup.sh    # make sure script is executable :contentReference[oaicite:8]{index=8}
-          ./.github/setup.sh "$VNC_PASS" "$VNC_PASS"
+          chmod +x .github/setup.sh
+          .github/setup.sh "$VNC_PASS" "$VNC_PASS"
 
       - name: Authenticate playit.gg agent
         run: |
-          nohup ./playit setup &       # prints a claim URL—click it in the logs 
+          nohup ./playit setup &
           sleep 10
 
-      - name: Start playit.gg TCP tunnel
+      - name: Start playit.gg tunnel
         run: |
           nohup ./playit tunnel tcp --port $APP_PORT &
           sleep 5
-          ./playit tunnel list         # shows your public endpoint
+          ./playit tunnel list
 
-      - name: Keep session alive
-        run: sleep 3600               # so you have time to connect
+      - name: Keep alive
+        run: sleep 3600
