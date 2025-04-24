@@ -1,4 +1,4 @@
-name: macOS Playit.gg + VNC
+name: macOS Playit.gg + VNC (Headless Only)
 
 on:
   workflow_dispatch:
@@ -10,28 +10,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install and Start VNC Server
+      - name: Install TigerVNC
+        run: brew install tiger-vnc
+
+      - name: Set VNC password
         run: |
-          brew install tiger-vnc
-           mkdir -p ~/.vnc
+          mkdir -p ~/.vnc
           echo "password" | /opt/homebrew/bin/tigervncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
-          /opt/homebrew/bin/tigervncserver :1 -geometry 1280x800 -depth 24
-      - name: Install Rust
-        run: |
-          if ! command -v cargo >/dev/null; then
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          fi
 
-      - name: Clone Playit Agent and Build
-        working-directory: playit-agent
+      - name: Start VNC Server
         run: |
-          git clone https://github.com/playit-cloud/playit-agent.git
-          cargo build --release
+          /opt/homebrew/bin/tigervncserver :1 -geometry 1280x800 -depth 24
 
       - name: Run Playit agent with secret
-        working-directory: playit-agent
         env:
           PLAYIT_SECRET: ${{ secrets.PL }}
         run: |
