@@ -12,7 +12,7 @@ jobs:
 
       - name: Install and Start VNC Server
         run: |
-          brew install tigervnc
+          brew install tiger-vnc
           mkdir -p ~/.vnc
           echo "password" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
