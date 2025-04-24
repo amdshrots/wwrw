@@ -1,58 +1,39 @@
-# .github/workflows/main.yml
-name: macOS Host via playit.gg
+name: macOS Playit.gg + VNC
 
-# Allows you to trigger this workflow manually from the Actions tab
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
-  host-macos:
-    runs-on: macos-latest # Use the latest macOS runner
+  playit-vnc:
+    runs-on: macos-latest
     steps:
-      # Optional: Checkout your repository code if needed by your service
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Setup Your macOS Service (Example Placeholder)
+      - name: Install and Start VNC Server
         run: |
-          echo "Starting service setup..."
-          # -------------------------------------------------------------
-          # ADD COMMANDS HERE TO INSTALL/CONFIGURE/START YOUR SERVICE
-          # Example: Enable Remote Login (SSH) - Requires password setup or key management!
-          # sudo systemsetup -setremotelogin on
-          # Or run commands to start your specific application
-          # -------------------------------------------------------------
-          echo "Service setup placeholder complete."
+          brew install tigervnc
+          mkdir -p ~/.vnc
+          echo "password" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+          /usr/local/bin/vncserver :1 -geometry 1280x800 -depth 24
 
-      - name: Download and Setup playit.gg Agent
-        # Use the GitHub Secret you created in repository settings
-        env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+      - name: Install Rust
         run: |
-          # Check if the secret is set - workflow will fail if not
-          if [ -z "$PLAYIT_SECRET" ]; then
-            echo "Error: PLAYIT_SECRET is not set. Please configure it in repository settings."
-            exit 1
+          if ! command -v cargo >/dev/null; then
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           fi
 
-          echo "Downloading playit.gg agent..."
-          # --- IMPORTANT: Find the correct download URL for macOS on playit.gg ---
-          curl -L -o playit https://github.com/playit-cloud/playit-agent/releases/download/v0.9.3/playit-darwin-amd64 # <-- EXAMPLE URL - GET THE LATEST/CORRECT ONE!
-
-          chmod +x playit # Make it executable
-
-          # Create config directory and write the secret to the config file
-          mkdir -p ~/.config/playit_gg
-          echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml
-
-          echo "playit.gg setup complete."
-
-      - name: Run playit.gg Agent and Keep Runner Alive
+      - name: Clone Playit Agent and Build
+        working-directory: playit-agent
         run: |
-          echo "Starting playit.gg agent in the background..."
-          # Run the agent. It should connect and print the tunnel address in the logs.
-          ./playit &
+          git clone https://github.com/playit-cloud/playit-agent.git
+          cargo build --release
 
-          echo "Runner is active. Keeping alive with sleep..."
-          # This command prevents the workflow job from finishing immediately.
-          # The runner and tunnel will stay active until the job times out (max 6 hours) or is cancelled.
-          sleep infinity
+      - name: Run Playit agent with secret
+        working-directory: playit-agent
+        env:
+          PLAYIT_SECRET: ${{ secrets.PL }}
+        run: |
+          ./target/release/playit-cli --secret "$PLAYIT_SECRET"
