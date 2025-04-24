@@ -1,63 +1,40 @@
-# .github/workflows/main.yml
-name: macOS Host via playit.gg
+name: macOS with Playit.gg RDP
 
-# Allows you to trigger this workflow manually from the Actions tab
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  host-macos:
-    runs-on: macos-latest # Use the latest macOS runner
+  setup-rdp:
+    runs-on: macos-latest
+
     steps:
-      # Optional: Checkout your repository code if needed by your service
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Setup Your macOS Service (Example Placeholder)
-        run: |
-          echo "Starting service setup..."
-          # -------------------------------------------------------------
-          # ADD COMMANDS HERE TO INSTALL/CONFIGURE/START YOUR SERVICE
-          # Example: Enable Remote Login (SSH) - Requires password setup or key management!
-          # sudo systemsetup -setremotelogin on
-          # Or run commands to start your specific application
-          # -------------------------------------------------------------
-          echo "Service setup placeholder complete."
+    - name: Install Playit.gg Tunnel
+      env:
+        PL_SECRET: ${{ secrets.PL }}
+      run: |
+        # Download Playit.gg binary
+        curl -O https://playit.gg/downloads/playit-cli-macos
+        chmod +x playit-cli-macos
 
-      - name: Download and Setup playit.gg Agent
-        env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
-        run: |
-          # Check if the secret is set
-          if [ -z "$PLAYIT_SECRET" ]; then
-            echo "Error: PLAYIT_SECRET is not set."
-            exit 1
-          fi
+        # Create a configuration file for Playit.gg using the secret
+        echo "$PL_SECRET" > playit-config.yml
 
-          echo "Downloading playit.gg agent..."
-          # --- PASTE YOUR CURRENT CURL COMMAND HERE ---
-          curl -L -o playit <YOUR_PLAYIT_DOWNLOAD_URL> # <-- Make sure this URL is correct!
+        # Run Playit.gg CLI in the background
+        nohup ./playit-cli-macos &
 
-          # --- ADD THESE DEBUGGING LINES ---
-          echo "--- DEBUGGING DOWNLOAD ---"
-          ls -l playit # Check file size and permissions
-          file playit  # Check the actual file type (should be executable, not text/html)
-          echo "--- First 5 lines of downloaded file: ---"
-          head -n 5 playit # See the beginning of the file content
-          echo "--- END DEBUGGING ---"
-          # --- END DEBUGGING LINES ---
+    - name: Install RDP Server
+      run: |
+        # Update and install a macOS RDP server (alternative to Microsoft Remote Desktop)
+        # Note: macOS does not natively allow RDP, so additional setup might be required.
+        echo "Configuring macOS for RDP (this step may vary depending on system permissions)"
 
-          # Continue with setup if download seems okay
-          chmod +x playit
-          mkdir -p ~/.config/playit_gg
-          echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml
-          echo "playit.gg setup complete."
-
-      - name: Run playit.gg Agent and Keep Runner Alive
-        run: |
-          echo "Starting playit.gg agent in the background..."
-          # Run the agent. It should connect and print the tunnel address in the logs.
-          ./playit &
-
-          echo "Runner is active. Keeping alive with sleep..."
-          # Use a large number of seconds instead of infinity for better macOS compatibility
-          sleep 21000
+    - name: Display Playit.gg Connection Info
+      run: |
+        # Display the tunnel connection details
+        ./playit-cli-macos status
