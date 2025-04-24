@@ -1,0 +1,34 @@
+name: macOS Host via playit.gg
+
+on: workflow_dispatch # Allows manual triggering
+
+jobs:
+  host:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code (if needed)
+        uses: actions/checkout@v4
+
+      - name: Setup macOS Service (Example: Enable SSH)
+        run: |
+          # Commands to enable SSH or start your desired service
+          echo "Setting up service..."
+          # sudo systemsetup -setremotelogin on # Example command (may need adjustments)
+
+      - name: Download and Setup playit.gg
+        env:
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }} # Use the secret from GitHub settings
+        run: |
+          echo "Downloading playit agent..."
+          # curl -L -o playit <URL_TO_MACOS_AGENT> # Replace with actual download URL
+          # chmod +x playit
+          # mkdir -p ~/.config/playit_gg
+          # echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml # Or however your setup uses the secret
+          echo "Playit setup complete."
+
+      - name: Run playit.gg Agent and Keep Alive
+        run: |
+          echo "Starting playit agent..."
+          ./playit & # Run in background
+          echo "Playit started. Keeping runner alive..."
+          sleep infinity # Keep the job running
