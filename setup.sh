@@ -3,13 +3,16 @@
 
 set -euo pipefail
 
+# Always cd back into the workspace in case PWD was invalidated
+cd "${GITHUB_WORKSPACE:-$(pwd)}"
+
 VNC_USER="akhil"
 VNC_PASS="$2"
 
-# disable spotlight indexing
+# disable Spotlight indexing
 sudo mdutil -i off -a
 
-# create new user ‘akhil’
+# create new user
 sudo dscl . -create /Users/"$VNC_USER"
 sudo dscl . -create /Users/"$VNC_USER" UserShell /bin/bash
 sudo dscl . -create /Users/"$VNC_USER" RealName "Akhil"
@@ -26,9 +29,12 @@ sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resourc
   -configure -clientopts -setvnclegacy -vnclegacy yes
 
 # set VNC password
-echo "$VNC_PASS" | perl -we 'BEGIN { @k = unpack "C*", pack "H*", "1734516E8BA8C5E2FF1C39567390ADCA" }; $_ = <>; chomp; s/^(.{8}).*/$1/; @p = unpack "C*", $_; foreach (@k) { printf "%02X", $_ ^ (shift @p || 0) }; print "\n"' \
+echo "$VNC_PASS" | perl -we 'BEGIN { @k=unpack "C*", pack "H*","1734516E8BA8C5E2FF1C39567390ADCA" }
+  $_=<>;chomp;s/^(.{8}).*/$1/;@p=unpack"C*";foreach(@k){printf"%02X",$_^(shift@p||0)};print"\n"' \
   | sudo tee /Library/Preferences/com.apple.VNCSettings.txt
 
-# restart the remote-management agent
-sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent -console
-sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate
+# restart the agent
+sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+  -restart -agent -console
+sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+  -activate
