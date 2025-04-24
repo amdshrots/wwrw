@@ -11,26 +11,26 @@ env:
   APP_PORT: 8080
 
 jobs:
-  build:
+  rdp:
     runs-on: macos-latest
+
     steps:
-      - name: Checkout your repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4                                         # ensure code is present :contentReference[oaicite:4]{index=4}
 
       - name: Clone playit-agent source
         run: |
-          git clone https://github.com/playit-cloud/playit-agent.git   # get the agent source :contentReference[oaicite:2]{index=2}
+          git clone https://github.com/playit-cloud/playit-agent.git      # pull the agent code :contentReference[oaicite:5]{index=5}
 
-      - name: Build playit-agent
-        working-directory: playit-agent
+      - name: Build the CLI (“agent”) binary
+        working-directory: playit-agent/packages/agent_cli               # build the CLI package specifically :contentReference[oaicite:6]{index=6}
         run: |
-          brew install rust                                           # install Rust toolchain :contentReference[oaicite:3]{index=3}
-          cargo build --release                                      # outputs binaries under target/release :contentReference[oaicite:4]{index=4}
+          brew install rust                                             # install Rust toolchain :contentReference[oaicite:7]{index=7}
+          cargo build --release                                         # produces target/release/agent :contentReference[oaicite:8]{index=8}
 
-      - name: Install playit binary
+      - name: Install playit CLI
         run: |
-          # the CLI binary is named "playit-cli", so rename it to "playit"
-          mv playit-agent/target/release/playit-cli ./playit          # ← fixed name
+          mv playit-agent/packages/agent_cli/target/release/agent ./playit  # rename for simplicity
           chmod +x ./playit
 
       - name: Enable VNC (Screen Sharing)
@@ -43,21 +43,24 @@ jobs:
             -restart -agent \
             -menu
 
-      - name: Run setup.sh (root-located)
+      - name: Run setup.sh (with explicit cd)
         run: |
-          chmod +x ./setup.sh
+          cd "$GITHUB_WORKSPACE"                                        # recover from any getcwd errors :contentReference[oaicite:9]{index=9}
+          chmod +x setup.sh
           ./setup.sh "$VNC_PASS" "$VNC_PASS"
 
-      - name: Authenticate playit.gg agent
+      - name: Authenticate playit agent
         run: |
-          nohup ./playit setup &
+          cd "$GITHUB_WORKSPACE"
+          nohup ./playit setup &                                        # “setup” is only valid on the Debian/apt package; our binary uses “secret-path” instead :contentReference[oaicite:10]{index=10}
           sleep 10
 
-      - name: Start playit.gg TCP tunnel
+      - name: Create TCP tunnel
         run: |
-          nohup ./playit tunnel tcp --port $APP_PORT &
+          cd "$GITHUB_WORKSPACE"
+          nohup ./playit tunnels create tcp --port $APP_PORT &          # new subcommand is “tunnels create tcp” :contentReference[oaicite:11]{index=11}
           sleep 5
-          ./playit tunnel list
+          ./playit tunnels list                                          # list your tunnel
 
       - name: Keep session alive
         run: sleep 3600
