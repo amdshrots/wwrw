@@ -24,26 +24,32 @@ jobs:
           echo "Service setup placeholder complete."
 
       - name: Download and Setup playit.gg Agent
-        # Use the GitHub Secret you created in repository settings
         env:
           PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
         run: |
-          # Check if the secret is set - workflow will fail if not
+          # Check if the secret is set
           if [ -z "$PLAYIT_SECRET" ]; then
-            echo "Error: PLAYIT_SECRET is not set. Please configure it in repository settings."
+            echo "Error: PLAYIT_SECRET is not set."
             exit 1
           fi
 
           echo "Downloading playit.gg agent..."
-          # --- IMPORTANT: Find the correct download URL for macOS on playit.gg ---
-          curl -L -o playit https://github.com/playit-cloud/playit-agent/releases/download/v0.9.3/playit-darwin-amd64 # <-- EXAMPLE URL - GET THE LATEST/CORRECT ONE!
+          # --- PASTE YOUR CURRENT CURL COMMAND HERE ---
+          curl -L -o playit <YOUR_PLAYIT_DOWNLOAD_URL> # <-- Make sure this URL is correct!
 
-          chmod +x playit # Make it executable
+          # --- ADD THESE DEBUGGING LINES ---
+          echo "--- DEBUGGING DOWNLOAD ---"
+          ls -l playit # Check file size and permissions
+          file playit  # Check the actual file type (should be executable, not text/html)
+          echo "--- First 5 lines of downloaded file: ---"
+          head -n 5 playit # See the beginning of the file content
+          echo "--- END DEBUGGING ---"
+          # --- END DEBUGGING LINES ---
 
-          # Create config directory and write the secret to the config file
+          # Continue with setup if download seems okay
+          chmod +x playit
           mkdir -p ~/.config/playit_gg
           echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml
-
           echo "playit.gg setup complete."
 
       - name: Run playit.gg Agent and Keep Runner Alive
