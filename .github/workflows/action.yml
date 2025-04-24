@@ -1,66 +1,34 @@
-name: macOS RDP via playit.gg
+name: macOS Host via playit.gg
 
-on:
-  workflow_dispatch:
-
-defaults:
-  run:
-    shell: bash
-
-env:
-  APP_PORT: 8080
+on: workflow_dispatch # Allows manual triggering
 
 jobs:
-  rdp:
+  host:
     runs-on: macos-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4                                         # ensure code is present :contentReference[oaicite:4]{index=4}
+      - name: Checkout code (if needed)
+        uses: actions/checkout@v4
 
-      - name: Clone playit-agent source
+      - name: Setup macOS Service (Example: Enable SSH)
         run: |
-          git clone https://github.com/playit-cloud/playit-agent.git      # pull the agent code :contentReference[oaicite:5]{index=5}
+          # Commands to enable SSH or start your desired service
+          echo "Setting up service..."
+          # sudo systemsetup -setremotelogin on # Example command (may need adjustments)
 
-      - name: Build the CLI (“agent”) binary
-        working-directory: playit-agent/packages/agent_cli               # build the CLI package specifically :contentReference[oaicite:6]{index=6}
+      - name: Download and Setup playit.gg
+        env:
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }} # Use the secret from GitHub settings
         run: |
-          brew install rust                                             # install Rust toolchain :contentReference[oaicite:7]{index=7}
-          cargo build --release                                         # produces target/release/agent :contentReference[oaicite:8]{index=8}
+          echo "Downloading playit agent..."
+          # curl -L -o playit <URL_TO_MACOS_AGENT> # Replace with actual download URL
+          # chmod +x playit
+          # mkdir -p ~/.config/playit_gg
+          # echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml # Or however your setup uses the secret
+          echo "Playit setup complete."
 
-      - name: Install playit CLI
+      - name: Run playit.gg Agent and Keep Alive
         run: |
-          mv playit-agent/packages/agent_cli/target/release/agent ./playit  # rename for simplicity
-          chmod +x ./playit
-
-      - name: Enable VNC (Screen Sharing)
-        run: |
-          sudo systemsetup -setremotelogin on
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -activate \
-            -configure -access -on \
-            -privs -all \
-            -restart -agent \
-            -menu
-
-      - name: Run setup.sh (with explicit cd)
-        run: |
-          cd "$GITHUB_WORKSPACE"                                        # recover from any getcwd errors :contentReference[oaicite:9]{index=9}
-          chmod +x setup.sh
-          ./setup.sh "$VNC_PASS" "$VNC_PASS"
-
-      - name: Authenticate playit agent
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          nohup ./playit setup &                                        # “setup” is only valid on the Debian/apt package; our binary uses “secret-path” instead :contentReference[oaicite:10]{index=10}
-          sleep 10
-
-      - name: Create TCP tunnel
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          nohup ./playit tunnels create tcp --port $APP_PORT &          # new subcommand is “tunnels create tcp” :contentReference[oaicite:11]{index=11}
-          sleep 5
-          ./playit tunnels list                                          # list your tunnel
-
-      - name: Keep session alive
-        run: sleep 3600
+          echo "Starting playit agent..."
+          ./playit & # Run in background
+          echo "Playit started. Keeping runner alive..."
+          sleep infinity # Keep the job running
