@@ -14,34 +14,24 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install Dependencies for Building Playit Agent
+    - name: Install Rust (if not present)
       run: |
-        echo "Updating and installing dependencies..."
-        brew update
-        brew install go git
+        if ! command -v cargo >/dev/null; then
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        fi
 
     - name: Clone Playit Agent Repository
       run: |
-        echo "Cloning the Playit Agent source code..."
         git clone https://github.com/playit-cloud/playit-agent.git
-        cd playit-agent
-
-    - name: Initialize Go Module
-      working-directory: playit-agent
-      run: |
-        echo "Initializing Go module..."
-        go mod init playit-agent
-        go mod tidy
 
     - name: Build Playit Agent
       working-directory: playit-agent
       run: |
-        echo "Building Playit Agent from source..."
-        # Adjust the path to the Go files, if necessary
-        go build -o playit-agent ./...
+        cargo build --release
 
         # Verify the binary is created
-        if [ ! -f "playit-agent" ]; then
+        if [ ! -f "target/release/playit-agent" ]; then
           echo "Build failed: Playit Agent binary not found."
           exit 1
         fi
@@ -49,7 +39,5 @@ jobs:
     - name: Run Playit Agent
       working-directory: playit-agent
       run: |
-        echo "Starting Playit Agent..."
-        ./playit-agent login
-
-        echo "Playit Agent is running. Go to your Playit.gg account to connect the tunnel."
+        echo "Starting Playit Agent. You will need to connect it using your Playit.gg account."
+        ./target/release/playit-agent login
