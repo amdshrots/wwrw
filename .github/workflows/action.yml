@@ -37,7 +37,8 @@ jobs:
       working-directory: playit-agent
       run: |
         echo "Building Playit Agent from source..."
-        go build -o playit-agent
+        # Adjust the path to the Go files, if necessary
+        go build -o playit-agent ./...
 
         # Verify the binary is created
         if [ ! -f "playit-agent" ]; then
