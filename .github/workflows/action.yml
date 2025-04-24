@@ -14,27 +14,34 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install Playit.gg Tunnel
-      env:
-        PL_SECRET: ${{ secrets.PL }}
+    - name: Install Dependencies for Building Playit Agent
       run: |
-        # Download Playit.gg binary
-        curl -O https://playit.gg/downloads/playit-cli-macos
-        chmod +x playit-cli-macos
+        echo "Updating and installing dependencies..."
+        brew update
+        brew install go git
 
-        # Create a configuration file for Playit.gg using the secret
-        echo "$PL_SECRET" > playit-config.yml
-
-        # Run Playit.gg CLI in the background
-        nohup ./playit-cli-macos &
-
-    - name: Install RDP Server
+    - name: Clone Playit Agent Repository
       run: |
-        # Update and install a macOS RDP server (alternative to Microsoft Remote Desktop)
-        # Note: macOS does not natively allow RDP, so additional setup might be required.
-        echo "Configuring macOS for RDP (this step may vary depending on system permissions)"
+        echo "Cloning the Playit Agent source code..."
+        git clone https://github.com/playit-cloud/playit-agent.git
+        cd playit-agent
 
-    - name: Display Playit.gg Connection Info
+    - name: Build Playit Agent
+      working-directory: playit-agent
       run: |
-        # Display the tunnel connection details
-        ./playit-cli-macos status
+        echo "Building Playit Agent from source..."
+        go build -o playit-agent
+
+        # Verify the binary is created
+        if [ ! -f "playit-agent" ]; then
+          echo "Build failed: Playit Agent binary not found."
+          exit 1
+        fi
+
+    - name: Run Playit Agent
+      working-directory: playit-agent
+      run: |
+        echo "Starting Playit Agent..."
+        ./playit-agent login
+
+        echo "Playit Agent is running. Go to your Playit.gg account to connect the tunnel."
