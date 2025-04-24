@@ -53,6 +53,5 @@ jobs:
           ./playit &
 
           echo "Runner is active. Keeping alive with sleep..."
-          # This command prevents the workflow job from finishing immediately.
-          # The runner and tunnel will stay active until the job times out (max 6 hours) or is cancelled.
-          sleep infinity
+          # Use a large number of seconds instead of infinity for better macOS compatibility
+          sleep 21000
