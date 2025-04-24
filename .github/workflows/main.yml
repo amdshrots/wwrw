@@ -13,11 +13,10 @@ jobs:
       - name: Install and Start VNC Server
         run: |
           brew install tiger-vnc
-          export PATH="/opt/homebrew/bin:$PATH"
-          mkdir -p ~/.vnc
-          echo "password" | /opt/homebrew/bin/vncpasswd -f > ~/.vnc/passwd
+           mkdir -p ~/.vnc
+          echo "password" | /opt/homebrew/bin/tigervncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
-          /opt/homebrew/bin/vncserver :1 -geometry 1280x800 -depth 24
+          /opt/homebrew/bin/tigervncserver :1 -geometry 1280x800 -depth 24
       - name: Install Rust
         run: |
           if ! command -v cargo >/dev/null; then
