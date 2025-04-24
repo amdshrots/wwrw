@@ -36,8 +36,9 @@ jobs:
           exit 1
         fi
 
-    - name: Run Playit Agent
+    - name: Run Playit agent with secret
       working-directory: playit-agent
+      env:
+        PLAYIT_SECRET: ${{ secrets.PL }}
       run: |
-        echo "Starting Playit Agent. Use the Playit.gg web dashboard to manage tunnels."
-        ./target/release/playit-cli
+        ./target/release/playit-cli --secret "$PLAYIT_SECRET"
