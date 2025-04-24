@@ -39,5 +39,5 @@ jobs:
     - name: Run Playit Agent
       working-directory: playit-agent
       run: |
-        echo "Starting Playit Agent. You will need to connect it using your Playit.gg account."
-        ./target/release/playit-cli login
+        echo "Starting Playit Agent. Use the Playit.gg web dashboard to manage tunnels."
+        ./target/release/playit-cli
