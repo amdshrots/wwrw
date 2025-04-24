@@ -1,34 +1,58 @@
+# .github/workflows/main.yml
 name: macOS Host via playit.gg
 
-on: workflow_dispatch # Allows manual triggering
+# Allows you to trigger this workflow manually from the Actions tab
+on: workflow_dispatch
 
 jobs:
-  host:
-    runs-on: macos-latest
+  host-macos:
+    runs-on: macos-latest # Use the latest macOS runner
     steps:
-      - name: Checkout code (if needed)
+      # Optional: Checkout your repository code if needed by your service
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup macOS Service (Example: Enable SSH)
+      - name: Setup Your macOS Service (Example Placeholder)
         run: |
-          # Commands to enable SSH or start your desired service
-          echo "Setting up service..."
-          # sudo systemsetup -setremotelogin on # Example command (may need adjustments)
+          echo "Starting service setup..."
+          # -------------------------------------------------------------
+          # ADD COMMANDS HERE TO INSTALL/CONFIGURE/START YOUR SERVICE
+          # Example: Enable Remote Login (SSH) - Requires password setup or key management!
+          # sudo systemsetup -setremotelogin on
+          # Or run commands to start your specific application
+          # -------------------------------------------------------------
+          echo "Service setup placeholder complete."
 
-      - name: Download and Setup playit.gg
+      - name: Download and Setup playit.gg Agent
+        # Use the GitHub Secret you created in repository settings
         env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }} # Use the secret from GitHub settings
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
         run: |
-          echo "Downloading playit agent..."
-          # curl -L -o playit <URL_TO_MACOS_AGENT> # Replace with actual download URL
-          # chmod +x playit
-          # mkdir -p ~/.config/playit_gg
-          # echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml # Or however your setup uses the secret
-          echo "Playit setup complete."
+          # Check if the secret is set - workflow will fail if not
+          if [ -z "$PLAYIT_SECRET" ]; then
+            echo "Error: PLAYIT_SECRET is not set. Please configure it in repository settings."
+            exit 1
+          fi
 
-      - name: Run playit.gg Agent and Keep Alive
+          echo "Downloading playit.gg agent..."
+          # --- IMPORTANT: Find the correct download URL for macOS on playit.gg ---
+          curl -L -o playit https://github.com/playit-cloud/playit-agent/releases/download/v0.9.3/playit-darwin-amd64 # <-- EXAMPLE URL - GET THE LATEST/CORRECT ONE!
+
+          chmod +x playit # Make it executable
+
+          # Create config directory and write the secret to the config file
+          mkdir -p ~/.config/playit_gg
+          echo "$PLAYIT_SECRET" > ~/.config/playit_gg/playit.toml
+
+          echo "playit.gg setup complete."
+
+      - name: Run playit.gg Agent and Keep Runner Alive
         run: |
-          echo "Starting playit agent..."
-          ./playit & # Run in background
-          echo "Playit started. Keeping runner alive..."
-          sleep infinity # Keep the job running
+          echo "Starting playit.gg agent in the background..."
+          # Run the agent. It should connect and print the tunnel address in the logs.
+          ./playit &
+
+          echo "Runner is active. Keeping alive with sleep..."
+          # This command prevents the workflow job from finishing immediately.
+          # The runner and tunnel will stay active until the job times out (max 6 hours) or is cancelled.
+          sleep infinity
