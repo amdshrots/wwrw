@@ -4,11 +4,13 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          brew update
-          chmod +x setup.sh
-          ./setup.sh
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Playit secret
         env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}  # Your Playit.gg secret
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+        run: echo "$PLAYIT_SECRET" > playit_secret.txt
+
+      - name: Run setup script
+        run: chmod +x setup.sh && ./setup.sh
