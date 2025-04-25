@@ -52,10 +52,12 @@ brew install zrok
 brew install --cask brave-browser
 brew install --cask microsoft-remote-desktop
 
+brew upgrade zrok
+
 # In setup.sh, after brew install zrok:
 export PATH="/usr/local/bin:$PATH"  # Add this line
 zrok config set apiEndpoint https://api-v1.zrok.io
-zrok enable $ZROK_TOKEN
+zrok enable $3
 
 # Schedule shutdown after 6 hours
 echo "Scheduling shutdown in 6 hours..."
