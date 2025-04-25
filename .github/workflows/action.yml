@@ -1,44 +1,34 @@
-name: macOS with Playit.gg RDP
+name: macOS Remote Desktop
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  setup-rdp:
-    runs-on: macos-latest
-
+  setup-remote-desktop:
+    runs-on: [macOS-latest]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install Rust (if not present)
-      run: |
-        if ! command -v cargo >/dev/null; then
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        fi
+      - name: Install Homebrew
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
+          eval "$(/opt/homebrew/bin/brew shellenv)"
 
-    - name: Clone Playit Agent Repository
-      run: |
-        git clone https://github.com/playit-cloud/playit-agent.git
+      - name: Install xrdp
+        run: |
+          brew install xrdp
+          sudo brew services start xrdp
 
-    - name: Build Playit Agent
-      working-directory: playit-agent
-      run: |
-        cargo build --release
+      - name: Allow Remote Login
+        run: |
+          sudo systemsetup -setremotelogin on
 
-        # Verify the binary is created
-        if [ ! -f "target/release/playit-cli" ]; then
-          echo "Build failed: Playit Agent binary not found."
-          exit 1
-        fi
-
-    - name: Run Playit agent with secret
-      working-directory: playit-agent
-      env:
-        PLAYIT_SECRET: ${{ secrets.PL }}
-      run: |
-        ./target/release/playit-cli --secret "$PLAYIT_SECRET"
+      - name: Print IP Address
+        run: |
+          echo "IP Address: $(curl -s ifconfig.me)"
+          echo "Use Remote Desktop to connect to this IP address with the username 'runner' and the password 'github'."
