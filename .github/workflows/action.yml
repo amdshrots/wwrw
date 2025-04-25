@@ -18,7 +18,7 @@ jobs:
         source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
     - name: Start zrok Tunnel
       run: |
-        zrok share private tcp://localhost:5900 --backend-mode tcpTunnel
+        zrok share private --backend-mode tcpTunnel --headless localhost:5900 > /dev/null 2>&1
         echo "Public URL: $(zrok list | grep tcp | awk '{print \$3}')"
     - name: Keep alive for 6 hours
       run: sleep 21600 && sudo shutdown -h now
