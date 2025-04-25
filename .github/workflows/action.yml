@@ -42,9 +42,13 @@ jobs:
       - name: Build Playit.gg Agent
         run: |
           cd playit-agent
-          # Build the Playit.gg agent using Go
           ls -la
-          go build -o playit
+          if [ -f main.go ]; then
+            go build -o playit
+          else
+            echo "Error: No main.go file found for building the project."
+            exit 1
+          fi
 
       - name: Start Playit.gg Tunnel
         run: |
