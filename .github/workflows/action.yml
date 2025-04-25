@@ -10,24 +10,17 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Setting the Environment Up.
+    - name: Setting the Environment Up
       env:
-        PASSWD: ${{secrets.PASSWD}}
-      run: source setup.sh "$PASSWD" "$PASSWD"
-    
-    # Start Zrok tunnel for VNC (port 5900)
-    - name: Start Zrok Tunnel
-      run: zrok expose -h "zrok.io" tcp 5900 --headless
-    
-    # Extract Zrok public URL
+        ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}  # Store your zrok token in GitHub Secrets
+        PASSWD: ${{ secrets.PASSWD }}
+      run: |
+        source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
     - name: zrok is now listening to VNC connections on...
       run: |
-        echo "Connect via: $(zrok share tcp 5900 | grep 'zrok.io' | awk '{print $4}')"
-
-    # Keep the runner alive for 6 hours
-    - name: Sleep for 6 hours
-      run: sleep 21600
-
-    # Shutdown the runner
-    - name: Shutdown
-      run: sudo shutdown -h now
+        zrok share tcp 5900 --quiet  # Suppress extra output
+        echo "Public URL: $(zrok list | grep tcp | awk '{print $3}')"
+    - name: Keep alive for 6 hours
+      run: sleep 21600 && sudo shutdown -h now
+    - name: Setup tmate Session
+      uses: mxschmitt/action-tmate@v2
