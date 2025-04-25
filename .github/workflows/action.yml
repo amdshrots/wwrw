@@ -1,76 +1,22 @@
-name: macOS Remote Desktop with Playit.gg (Compiled from Source)
+name: macOS Setup
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  setup-remote-desktop:
-    runs-on: macOS-latest
-    timeout-minutes: 360  # Set the job to run for 6 hours
+  build:
+    runs-on: macos-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Install Build Tools and Dependencies
-        run: |
-          # Install Homebrew if not already installed
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-
-          # Install dependencies for building Playit
-          brew install go git
-
-      - name: Clone Playit.gg Repository
-        run: |
-          git clone --branch <branch-name> https://github.com/playit-cloud/playit-agent.git
-          cd playit-agent
-          ls -la
-
-      - name: Initialize Go Module
-        run: |
-          cd playit-agent
-          # Initialize the Go module if not present
-          go mod init github.com/playit-cloud/playit-agent || true
-          go mod tidy  # Fetch dependencies
-
-      - name: Build Playit.gg Agent
-        run: |
-          cd playit-agent/<subdirectory>
-          ls -la
-          if [ -f ./main.go ]; then
-            go build -o playit
-          else
-            echo "Error: No main.go file found for building the project."
-            exit 1
-          fi
-
-      - name: Start Playit.gg Tunnel
-        run: |
-          cd playit-agent
-          echo "${{ secrets.PLAYIT_SECRET }}" > playit-auth.key
-          nohup ./playit -s playit-auth.key > playit.log 2>&1 &
-
-      - name: Enable Remote Desktop
-        run: |
-          # Enable Remote Desktop
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -activate -configure -access -on \
-            -users runner -privs -all -restart -agent
-
-          # Print connection details
-          echo "Tunnel IP: international-latter.gl.at.ply.gg:43837"
-          echo "Username: runner"
-          echo "Password: github"
-
-      - name: Keep the Runner Active
-        run: |
-          # Keep the runner active by running a no-op command in a loop
-          while true; do
-            sleep 3600  # Sleep for 1 hour
-          done
-        shell: bash
+    - name: Connect to PlayIt.gg
+      env:
+        PLAYIT_SECRET: ${{ secrets.PL }}
+      run: |
+        PLAYIT_IP=$(curl -s https://api.playit.gg/v1/tunnel -H "Authorization: Bearer $PLAYIT_SECRET" | jq -r '.ip')
+        PLAYIT_PORT=$(curl -s https://api.playit.gg/v1/tunnel -H "Authorization: Bearer $PLAYIT_SECRET" | jq -r '.port')
+        echo "IP: $PLAYIT_IP"
+        echo "Port: $PLAYIT_PORT"
+        # Use the IP and Port to connect via Remote Desktop
