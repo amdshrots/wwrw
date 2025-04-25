@@ -21,25 +21,21 @@ jobs:
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      - name: Install xrdb
+      - name: Install Required Tools
         run: |
           brew install xrdb
+          brew install socat
 
-      - name: Start xrdb
+      - name: Configure Remote Desktop
         run: |
-          # Load the .Xresources file (adjust the file path if needed)
-          xrdb -merge $HOME/.Xresources
-
-      - name: Allow Remote Login
-        run: |
+          # Enable Remote Login for SSH Connections
           sudo systemsetup -setremotelogin on
 
-      - name: Print IP Address
-        run: |
+          # Print the IP Address
           echo "IP Address: $(curl -s ifconfig.me)"
           echo "Use Remote Desktop to connect to this IP address with the username 'runner' and the password 'github'."
 
-      - name: Keep the runner active
+      - name: Keep the Runner Active
         run: |
           # Keep the runner active by running a no-op command in a loop
           while true; do
