@@ -1,21 +1,31 @@
-name: macOS
-on: 
-  workflow_dispatch:
-defaults:
-  run:
-    shell: bash
+# .github/workflows/action.yml
+name: macOS-PlayIt-Setup
+
+on:
+  push:
+    branches: [main]
 
 jobs:
   build:
-    runs-on: macOS-12
+    runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Setting the Environment Up.
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        PASSWD: ${{secrets.PASSWD}}
-      run: source setup.sh "$PASSWD" "$PASSWD" "$NGROK_AUTH_TOKEN"
-    - name: ngrok is now listening to VNC connections on...
-      run: curl --silent http://127.0.0.1:4040/api/tunnels | jq '.tunnels[0].public_url'
-    - name: Setup tmate Session
-      uses: mxschmitt/action-tmate@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PlayIt.gg Tunnel
+        env:
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}  # Use your stored secret [[5]]
+        run: |
+          # Install PlayIt.gg CLI (adjust commands based on official docs)
+          curl -L https://playit.gg/download/cli/mac -o playit && chmod +x playit
+          ./playit --secret $PLAYIT_SECRET &  # Start tunnel in background
+
+      - name: Run setup.sh (install VNC, dependencies, etc.)
+        run: chmod +x setup.sh && ./setup.sh
+
+      - name: Output PlayIt Public IP
+        run: |
+          # Extract and display the public IP/URL from PlayIt.gg logs
+          # (Adjust command based on PlayIt.gg CLI output format)
+          sleep 10  # Wait for tunnel to initialize
+          ./playit --status  # Example command to fetch connection details
