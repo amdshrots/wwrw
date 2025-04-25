@@ -7,10 +7,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Playit secret
+      - name: Run setup script
         env:
           PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
-        run: echo "$PLAYIT_SECRET" > playit_secret.txt
-
-      - name: Run setup script
-        run: chmod +x setup.sh && ./setup.sh
+        run: |
+          chmod +x setup.sh
+          ./setup.sh
