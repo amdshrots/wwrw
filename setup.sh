@@ -49,9 +49,6 @@ defaults write com.apple.loginwindow AllowList -string '*'
 
 # Install Pinggy instead of Ngrok
 curl -sL https://pinggy.io/install | sh  # Installs Pinggy [[8]]
-
-# Start Pinggy tunnel (replace VNC_PORT if needed)
-pinggy -token $PINGGY_TOKEN -port 5900  # Use your Pinggy token [[8]]
 #install chrome
 brew install --cask google-chrome
 #install Chrome-remote-desktop
@@ -70,3 +67,5 @@ defaults write com.apple.universalaccessAuthWarning "/Applications/AnyDesk.app/C
 defaults write com.apple.universalaccessAuthWarning "3::/Applications" -bool true
 defaults write com.apple.universalaccessAuthWarning "3::/Applications/AnyDesk.app" -bool true
 defaults write com.apple.universalaccessAuthWarning "com.philandro.anydesk" -bool true
+
+pinggy -token $PINGGY_TOKEN -port 5900
