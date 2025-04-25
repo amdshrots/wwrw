@@ -26,13 +26,16 @@ jobs:
           brew install xrdb
           brew install socat
 
-      - name: Configure Remote Desktop
+      - name: Install VNC Server
         run: |
-          # Enable Remote Login for SSH Connections
-          sudo systemsetup -setremotelogin on
+          brew install tigervnc
+          vncserver -localhost no
 
-          # Print the IP Address
+      - name: Print VNC Connection Info
+        run: |
+          echo "VNC Server is running. Use the following connection details:"
           echo "IP Address: $(curl -s ifconfig.me)"
+          echo "Port: 5901 (default for VNC)"
           echo "Use Remote Desktop to connect to this IP address with the username 'runner' and the password 'github'."
 
       - name: Keep the Runner Active
