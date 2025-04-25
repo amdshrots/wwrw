@@ -21,17 +21,17 @@ jobs:
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      - name: Install Required Tools
+      - name: Install TigerVNC
         run: |
           brew install tiger-vnc
-          brew install socat
+          echo "TigerVNC installed successfully."
 
       - name: Start VNC Server
         run: |
           mkdir -p ~/.vnc
-          echo "github" | vncpasswd -f > ~/.vnc/passwd
+          echo "github" > ~/.vnc/passwd  # Set the VNC password to "github"
           chmod 600 ~/.vnc/passwd
-          vncserver :1
+          vncserver :1 -localhost no
 
       - name: Print VNC Connection Info
         run: |
