@@ -58,9 +58,9 @@ cargo build --release
 # Install macOS target and build
 rustup target add x86_64-apple-darwin
 cargo build --release --target x86_64-apple-darwin
+cargo fix --bin "playit-cli"
 
-# Move binary to system path
-sudo mv target/*apple-darwin/release/playit /usr/local/bin/
+sudo mv target/**/release/playit /usr/local/bin/
 
 # Start Playit with secret
 playit --secret "$PLAYIT_SECRET"
