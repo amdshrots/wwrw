@@ -55,7 +55,7 @@ export PATH="/usr/local/bin:$PATH"
 zrok config set apiEndpoint https://api-v1.zrok.io
 
 # Enable zrok with the provided token
-zrok enable --headless --verbose $2
+zrok enable --headless --verbose $3
 
 # Schedule shutdown after 6 hours
 echo "Scheduling shutdown in 6 hours..."
