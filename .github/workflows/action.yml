@@ -7,9 +7,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run setup script
-        env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+      - name: Pinggy tunnel URL
         run: |
-          chmod +x setup.sh
-          ./setup.sh
+          # Pinggy outputs the public URL directly to stdout
+          echo "Connect via: $(pinggy tcp 5900 | grep -o 'https://.*')"
