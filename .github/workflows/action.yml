@@ -13,8 +13,7 @@ jobs:
     - name: Setup Environment
       env:
         PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
-        PASSWD: ${{ secrets.PASSWD }}
-      run: source setup.sh "$PASSWD" "$PASSWD" "$PINGGY_TOKEN"
+      run: source setup.sh "$PINGGY_TOKEN"
     - name: Keep alive for 6 hours
       run: sleep 21600
     - name: Setup tmate Session
