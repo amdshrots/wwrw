@@ -54,3 +54,5 @@ cd playit-agent
 cargo build --release
 
 sudo mv target/release/playit /usr/local/bin/
+
+playit --secret "$PLAYIT_SECRET"
