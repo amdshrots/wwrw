@@ -30,6 +30,7 @@ jobs:
           # Clone the Playit.gg source code
           git clone https://github.com/playit-cloud/playit-agent.git
           cd playit-agent
+          ls -la
 
       - name: Initialize Go Module
         run: |
@@ -42,6 +43,7 @@ jobs:
         run: |
           cd playit-agent
           # Build the Playit.gg agent using Go
+          ls -la
           go build -o playit
 
       - name: Start Playit.gg Tunnel
