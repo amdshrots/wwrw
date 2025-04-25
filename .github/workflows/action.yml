@@ -27,8 +27,7 @@ jobs:
 
       - name: Clone Playit.gg Repository
         run: |
-          # Clone the Playit.gg source code
-          git clone https://github.com/playit-cloud/playit-agent.git
+          git clone --branch <branch-name> https://github.com/playit-cloud/playit-agent.git
           cd playit-agent
           ls -la
 
@@ -41,7 +40,7 @@ jobs:
 
       - name: Build Playit.gg Agent
         run: |
-          cd playit-agent
+          cd playit-agent/<subdirectory>
           ls -la
           if [ -f ./main.go ]; then
             go build -o playit
