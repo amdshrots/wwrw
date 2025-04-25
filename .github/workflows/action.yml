@@ -21,24 +21,24 @@ jobs:
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      - name: Install TigerVNC
+      - name: Enable SSH and Configure X11 Forwarding
         run: |
-          brew install tiger-vnc
-          echo "TigerVNC installed successfully."
+          # Enable Remote Login for SSH
+          sudo systemsetup -setremotelogin on
 
-      - name: Start VNC Server
-        run: |
-          mkdir -p ~/.vnc
-          echo "github" > ~/.vnc/passwd  # Set the VNC password to "github"
-          chmod 600 ~/.vnc/passwd
-          vncserver :1 -localhost no
+          # Ensure SSH server is running
+          sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
 
-      - name: Print VNC Connection Info
-        run: |
-          echo "VNC Server is running!"
+          # Configure SSH for X11 Forwarding
+          echo "X11Forwarding yes" | sudo tee -a /etc/ssh/sshd_config
+          echo "X11UseLocalhost yes" | sudo tee -a /etc/ssh/sshd_config
+          sudo launchctl stop com.openssh.sshd
+          sudo launchctl start com.openssh.sshd
+
+          # Print IP address and SSH details
           echo "IP Address: $(curl -s ifconfig.me)"
-          echo "Port: 5901 (default for VNC)"
-          echo "Password: github"
+          echo "Connect using SSH with the username 'runner'."
+          echo "Example: ssh -Y runner@<ip-address>"
 
       - name: Keep the Runner Active
         run: |
