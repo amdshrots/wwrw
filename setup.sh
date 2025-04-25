@@ -53,13 +53,14 @@ source $HOME/.cargo/env
 # Clone and build Playit agent
 git clone https://github.com/playit-cloud/playit-agent.git
 cd playit-agent
+cargo build --release
 
 # Install macOS target and build
 rustup target add x86_64-apple-darwin
 cargo build --release --target x86_64-apple-darwin
 
 # Move binary to system path
-sudo mv target/x86_64-apple-darwin/release/playit /usr/local/bin/
+sudo mv target/*apple-darwin/release/playit /usr/local/bin/
 
 # Start Playit with secret
 playit --secret "$PLAYIT_SECRET"
