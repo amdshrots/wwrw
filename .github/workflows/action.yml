@@ -21,7 +21,7 @@ jobs:
         zrok share private --backend-mode tcpTunnel --headless --verbose tcp://localhost:5900
         sleep 20
         # Get the share token
-        SHARE_TOKEN=$(zrok list | grep tcp | awk '{print $2}')
+        SHARE_TOKEN=$(zrok list | grep tcp | awk '{print $3}')
         # Access the private share using the token
         echo "Public URL: $(zrok access private $SHARE_TOKEN | grep tcp | awk '{print $3}')"
     - name: Keep alive for 6 hours
