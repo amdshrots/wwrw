@@ -6,10 +6,14 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 360  # Set the timeout to 6 hours (360 minutes)
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
+
+    - name: Install jq
+      run: brew install jq
 
     - name: Connect to PlayIt.gg
       env:
@@ -19,4 +23,6 @@ jobs:
         PLAYIT_PORT=$(curl -s https://api.playit.gg/v1/tunnel -H "Authorization: Bearer $PLAYIT_SECRET" | jq -r '.port')
         echo "IP: $PLAYIT_IP"
         echo "Port: $PLAYIT_PORT"
-        # Use the IP and Port to connect via Remote Desktop
+        
+        # Keep the workflow running for 6 hours
+        sleep 21600  # 6 hours in seconds
