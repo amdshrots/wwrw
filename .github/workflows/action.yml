@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 360  # 6-hour timeout
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Setting the Environment Up.
       env:
         PASSWD: ${{ secrets.PASSWD }}
