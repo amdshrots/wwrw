@@ -46,13 +46,20 @@ defaults write com.apple.universalaccessAuthWarning "3::/Applications" -bool tru
 defaults write com.apple.universalaccessAuthWarning "3::/Applications/AnyDesk.app" -bool true
 defaults write com.apple.universalaccessAuthWarning "com.philandro.anydesk" -bool true
 
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
 
+# Clone and build Playit agent
 git clone https://github.com/playit-cloud/playit-agent.git
 cd playit-agent
-cargo build --release
 
-sudo mv target/release/playit /usr/local/bin/
+# Install macOS target and build
+rustup target add x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin
 
+# Move binary to system path
+sudo mv target/x86_64-apple-darwin/release/playit /usr/local/bin/
+
+# Start Playit with secret
 playit --secret "$PLAYIT_SECRET"
