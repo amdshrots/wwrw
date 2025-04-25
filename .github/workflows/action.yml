@@ -19,10 +19,10 @@ jobs:
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      - name: Install xrdp
+      - name: Install xrdb
         run: |
-          brew install xrdp
-          sudo brew services start xrdp
+          brew install xrdb
+          sudo brew services start xrdb
 
       - name: Allow Remote Login
         run: |
