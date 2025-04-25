@@ -45,18 +45,11 @@ defaults write com.apple.loginwindow DisableScreenLock -bool true
 
 defaults write com.apple.loginwindow AllowList -string '*'
 
-# Install zrok
 brew install zrok
 
-# Add zrok to PATH
-export PATH="/usr/local/bin:$PATH"
-
-# Configure zrok
 zrok config set apiEndpoint https://api-v1.zrok.io
 
-# Enable zrok with the provided token
-zrok enable $3 --headless --verbose
+zrok enable $3 
 
-# Schedule shutdown after 6 hours
 echo "Scheduling shutdown in 6 hours..."
 sudo shutdown -h +360
