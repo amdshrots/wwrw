@@ -48,13 +48,9 @@ defaults write com.apple.loginwindow AllowList -string '*'
 
 
 
-#install chrome
+brew install zrok
 brew install --cask brave-browser
 brew install --cask microsoft-remote-desktop
-
-
-# Install Zrok
-curl -sL https://raw.githubusercontent.com/openziti/zrok/main/install.sh | sudo bash
 
 # Enable Zrok with your token (replace with your actual token)
 zrok enable 5mNi1kjx9EbV
