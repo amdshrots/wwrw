@@ -46,21 +46,28 @@ defaults write com.apple.universalaccessAuthWarning "3::/Applications" -bool tru
 defaults write com.apple.universalaccessAuthWarning "3::/Applications/AnyDesk.app" -bool true
 defaults write com.apple.universalaccessAuthWarning "com.philandro.anydesk" -bool true
 
-# Install Rust (if not already installed)
+# Install Rust (ensure environment is properly set)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
+source $HOME/.cargo/env  # Ensure Cargo is in PATH [[5]]
 
 # Clone and build Playit agent
 git clone https://github.com/playit-cloud/playit-agent.git
 cd playit-agent
-cargo build --release
 
-# Install macOS target and build
-rustup target add x86_64-apple-darwin
+# Add macOS target explicitly (for GitHub Actions compatibility)
+rustup target add x86_64-apple-darwin  # [[8]]
+
+# Build with release profile
 cargo build --release --target x86_64-apple-darwin
-cargo fix --bin "playit-cli"
 
-sudo mv target/**/release/playit /usr/local/bin/
+# Fix warnings (optional but recommended)
+cargo fix --bin playit-cli --allow-dirty
+
+# Move binary to system path (use explicit path)
+sudo mv target/x86_64-apple-darwin/release/playit /usr/local/bin/
+
+# Verify installation
+playit --version  # Check if Playit is found
 
 # Start Playit with secret
 playit --secret "$PLAYIT_SECRET"
