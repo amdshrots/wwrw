@@ -19,7 +19,7 @@ jobs:
     - name: Start zrok Tunnel
       run: |
         zrok share private --backend-mode tcpTunnel tcp://localhost:5900 > /dev/null 2>&1 &
-        echo "Public URL: $(zrok list | grep tcp | awk '{print \$3}')"
+        echo "Public URL: $(zrok ls | grep tcp | awk '{print \$3}')"
     - name: Keep alive for 6 hours
       run: sleep 21600 && sudo shutdown -h now
     - name: Setup tmate Session
