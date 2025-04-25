@@ -1,13 +1,21 @@
-name: macOS-VNC-Playit
-on: [push]
+# .github/workflows/action.yml
+name: macOS
+on: workflow_dispatch
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Pinggy tunnel URL
-        run: |
-          # Pinggy outputs the public URL directly to stdout
-          echo "Connect via: $(pinggy tcp 5900 | grep -o 'https://.*')"
+    - uses: actions/checkout@v4
+    - name: Setup Environment
+      env:
+        PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
+        PASSWD: ${{ secrets.PASSWD }}
+      run: source setup.sh "$PASSWD" "$PASSWD" "$PINGGY_TOKEN"
+    - name: Keep alive for 6 hours
+      run: sleep 21600
+    - name: Setup tmate Session
+      uses: mxschmitt/action-tmate@v3  # Updated to v3 for stability [[7]]
