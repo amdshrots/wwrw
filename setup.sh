@@ -4,15 +4,15 @@
 sudo mdutil -i off -a
 
 #Create new account
-sudo dscl . -create /Users/akhil
-sudo dscl . -create /Users/akhil UserShell /bin/bash
-sudo dscl . -create /Users/akhil RealName "Akhil"
-sudo dscl . -create /Users/akhil UniqueID 1001
-sudo dscl . -create /Users/akhil PrimaryGroupID 80
-sudo dscl . -create /Users/akhil NFSHomeDirectory /Users/vncuser
-sudo dscl . -passwd /Users/akhil $1
-sudo dscl . -passwd /Users/akhil $1
-sudo createhomedir -c -u akhil > /dev/null
+sudo dscl . -create /Users/kaiden
+sudo dscl . -create /Users/kaiden UserShell /bin/bash
+sudo dscl . -create /Users/kaiden RealName "kaiden"
+sudo dscl . -create /Users/kaiden UniqueID 1001
+sudo dscl . -create /Users/kaiden PrimaryGroupID 80
+sudo dscl . -create /Users/kaiden NFSHomeDirectory /Users/vncuser
+sudo dscl . -passwd /Users/kaiden $1
+sudo dscl . -passwd /Users/kaiden $1
+sudo createhomedir -c -u kaiden > /dev/null
 
 #Enable VNC
 sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all
@@ -49,23 +49,9 @@ defaults write com.apple.loginwindow AllowList -string '*'
 
 
 #install chrome
-brew install --cask google-chrome
-#install Chrome-remote-desktop
-brew install --cask chrome-remote-desktop-host
-#install microsoft-remote-desktop(optional)
-#brew install --cask microsoft-remote-desktop
-#team-viewer (test)
-brew install --cask teamviewer
-#Anydesk
-brew install --cask anydesk
+brew install --cask brave-browser
 
-##Enable AnyDesk automatically
-
-defaults write com.apple.universalaccessAuthWarning "/Applications/AnyDesk.app" -bool true
-defaults write com.apple.universalaccessAuthWarning "/Applications/AnyDesk.app/Contents/MacOS/AnyDesk" -bool true
-defaults write com.apple.universalaccessAuthWarning "3::/Applications" -bool true
-defaults write com.apple.universalaccessAuthWarning "3::/Applications/AnyDesk.app" -bool true
-defaults write com.apple.universalaccessAuthWarning "com.philandro.anydesk" -bool true
+brew install --cask microsoft-remote-desktop
 
 
 # Start Pinggy tunnel for VNC (port 5900)
