@@ -43,8 +43,7 @@ jobs:
         run: |
           cd playit-agent
           ls -la
-          if [ -f ./path/to/main.go ]; then
-            cd ./path/to/
+          if [ -f ./main.go ]; then
             go build -o playit
           else
             echo "Error: No main.go file found for building the project."
