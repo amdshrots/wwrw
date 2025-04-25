@@ -9,6 +9,8 @@ on:
 jobs:
   setup-remote-desktop:
     runs-on: [macOS-latest]
+    timeout-minutes: 360  # Set the job to run for 6 hours
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -19,12 +21,10 @@ jobs:
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      # Remove or replace xrdb if not essential
-      - name: Install essential tools
+      - name: Install xrdp
         run: |
-          brew install xrdb || echo "xrdb installation skipped"
-          # Remove the service command for `xrdb` as it is not supported
-          # sudo brew services start xrdb
+          brew install xrdp
+          sudo brew services start xrdp
 
       - name: Allow Remote Login
         run: |
@@ -34,3 +34,11 @@ jobs:
         run: |
           echo "IP Address: $(curl -s ifconfig.me)"
           echo "Use Remote Desktop to connect to this IP address with the username 'runner' and the password 'github'."
+
+      - name: Keep the runner active
+        run: |
+          # Keep the runner active by running a no-op command in a loop
+          while true; do
+            sleep 3600  # Sleep for 1 hour
+          done
+        shell: bash
