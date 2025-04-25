@@ -1,4 +1,4 @@
-name: macOS Remote Desktop
+name: macOS Remote Desktop with Playit.gg
 
 on:
   push:
@@ -21,27 +21,30 @@ jobs:
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      - name: Enable SSH and Configure X11 Forwarding
+      - name: Install Playit.gg
         run: |
-          # Enable Remote Login for SSH
-          sudo systemsetup -setremotelogin on
+          brew install wget
+          wget https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-macos.zip
+          unzip playit-macos.zip
+          chmod +x playit
+          mv playit /usr/local/bin/
 
-          # Stop and restart SSH to ensure it's properly loaded
-          sudo launchctl unload -w /System/Library/LaunchDaemons/ssh.plist || true
-          sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
+      - name: Start Playit.gg Tunnel
+        run: |
+          echo "${{ secrets.PLAYIT_SECRET }}" > playit-auth.key
+          nohup ./playit -s playit-auth.key > playit.log 2>&1 &
 
-          # Configure SSH for X11 Forwarding
-          echo "X11Forwarding yes" | sudo tee -a /etc/ssh/sshd_config
-          echo "X11UseLocalhost yes" | sudo tee -a /etc/ssh/sshd_config
+      - name: Enable Remote Desktop
+        run: |
+          # Enable Remote Desktop
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -users runner -privs -all -restart -agent
 
-          # Restart SSH service to apply configuration
-          sudo launchctl stop com.openssh.sshd || true
-          sudo launchctl start com.openssh.sshd
-
-          # Print IP address and SSH details
-          echo "IP Address: $(curl -s ifconfig.me)"
-          echo "Connect using SSH with the username 'runner'."
-          echo "Example: ssh -Y runner@<ip-address>"
+          # Print connection details
+          echo "Tunnel IP: international-latter.gl.at.ply.gg:43837"
+          echo "Username: runner"
+          echo "Password: github"
 
       - name: Keep the Runner Active
         run: |
