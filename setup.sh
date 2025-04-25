@@ -50,13 +50,14 @@ defaults write com.apple.loginwindow AllowList -string '*'
 
 #install chrome
 brew install --cask brave-browser
-
 brew install --cask microsoft-remote-desktop
 
 
-# Start Pinggy tunnel for VNC (port 5900)
-echo "Starting Pinggy tunnel..."
-ssh -p 443 -R0:localhost:5900 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 gtcxZbEfnfR+tcp@us.free.pinggy.io
+# Install Zrok
+curl -sL https://raw.githubusercontent.com/openziti/zrok/main/install.sh | sudo bash
+
+# Enable Zrok with your token (replace with your actual token)
+zrok enable 5mNi1kjx9EbV
 
 # Schedule shutdown after 6 hours
 echo "Scheduling shutdown in 6 hours..."
