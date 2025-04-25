@@ -18,7 +18,7 @@ jobs:
         source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
     - name: zrok is now listening to VNC connections on...
       run: |
-        zrok share private --backend-mode proxy --target localhost:5900 > /dev/null 2>&1
+        zrok share tcp 5900
         echo "Public URL: $(zrok list | grep tcp | awk '{print $3}')"
     - name: Keep alive for 6 hours
       run: sleep 21600 && sudo shutdown -h now
