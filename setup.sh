@@ -53,7 +53,7 @@ brew install --cask brave-browser
 brew install --cask microsoft-remote-desktop
 
 # Enable Zrok with your token (replace with your actual token)
-zrok enable 5mNi1kjx9EbV
+zrok enable $3
 
 # Schedule shutdown after 6 hours
 echo "Scheduling shutdown in 6 hours..."
