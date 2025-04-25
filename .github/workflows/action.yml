@@ -8,18 +8,26 @@ defaults:
 jobs:
   build:
     runs-on: macos-latest
-    timeout-minutes: 360  # 6-hour timeout
     steps:
     - uses: actions/checkout@v4
     - name: Setting the Environment Up.
       env:
-        PASSWD: ${{ secrets.PASSWD }}
+        PASSWD: ${{secrets.PASSWD}}
       run: source setup.sh "$PASSWD" "$PASSWD"
-      
-    - name: Get Pinggy Public URL
+    
+    # Start Zrok tunnel for VNC (port 5900)
+    - name: Start Zrok Tunnel
+      run: zrok expose -h "zrok.io" tcp 5900 --headless
+    
+    # Extract Zrok public URL
+    - name: zrok is now listening to VNC connections on...
       run: |
-        PINGGY_URL=$(ps aux | grep '[s]sh -p 443 -R0:localhost:5900' | awk '{print $NF}' | xargs -I{} curl -s {})
-        echo "Connect via: $PINGGY_URL"
-        
-    - name: Setup tmate Session
-      uses: mxschmitt/action-tmate@v2
+        echo "Connect via: $(zrok share tcp 5900 | grep 'zrok.io' | awk '{print $4}')"
+
+    # Keep the runner alive for 6 hours
+    - name: Sleep for 6 hours
+      run: sleep 21600
+
+    # Shutdown the runner
+    - name: Shutdown
+      run: sudo shutdown -h now
