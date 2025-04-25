@@ -47,8 +47,7 @@ defaults write com.apple.loginwindow DisableScreenLock -bool true
 defaults write com.apple.loginwindow AllowList -string '*'
 
 
-# Install Pinggy instead of Ngrok
-curl -sL https://pinggy.io/install | sh  # Installs Pinggy [[8]]
+
 #install chrome
 brew install --cask google-chrome
 #install Chrome-remote-desktop
@@ -68,4 +67,11 @@ defaults write com.apple.universalaccessAuthWarning "3::/Applications" -bool tru
 defaults write com.apple.universalaccessAuthWarning "3::/Applications/AnyDesk.app" -bool true
 defaults write com.apple.universalaccessAuthWarning "com.philandro.anydesk" -bool true
 
-pinggy -token $PINGGY_TOKEN -port 5900
+
+# Start Pinggy tunnel for VNC (port 5900)
+echo "Starting Pinggy tunnel..."
+ssh -p 443 -R0:localhost:5900 qr@a.pinggy.io &
+
+# Schedule shutdown after 6 hours
+echo "Scheduling shutdown in 6 hours..."
+sudo shutdown -h +360
