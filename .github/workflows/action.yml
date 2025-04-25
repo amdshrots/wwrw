@@ -28,7 +28,7 @@ jobs:
 
       - name: Install VNC Server
         run: |
-          brew install tigervnc
+          brew install tiger-vnc
           vncserver -localhost no
 
       - name: Print VNC Connection Info
