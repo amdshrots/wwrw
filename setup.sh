@@ -52,14 +52,8 @@ brew install --cask microsoft-remote-desktop
 
 brew upgrade zrok
 
-# Add zrok to PATH
-export PATH="/usr/local/bin:$PATH"
-
-# Configure zrok
-zrok config set apiEndpoint https://api-v1.zrok.io
-
-# Enable zrok with the provided token
-zrok enable --headless $3
+zrok enable $3
+SHARE_TOKEN=$(zrok list | grep tcp | awk '{print $3}')
 
 # Schedule shutdown after 6 hours
 echo "Scheduling shutdown in 6 hours..."
