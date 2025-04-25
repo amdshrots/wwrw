@@ -18,7 +18,7 @@ jobs:
         source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
     - name: Start zrok Tunnel
       run: |
-        zrok share private --backend-mode tcpTunnel tcp://localhost:5900 > /dev/null 2>&1 &
+        zrok share private --backend-mode tcpTunnel --headless tcp://localhost:5900
         sleep 20
         # Get the share token
         SHARE_TOKEN=$(zrok list | grep tcp | awk '{print $2}')
