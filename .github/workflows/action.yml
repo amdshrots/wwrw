@@ -1,28 +1,21 @@
-name: macOS Setup
-
-on:
+name: macOS
+on: 
   workflow_dispatch:
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
-    runs-on: macos-latest
-    timeout-minutes: 360  # Set the timeout to 6 hours (360 minutes)
-
+    runs-on: macOS-12
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-
-    - name: Install jq
-      run: brew install jq
-
-    - name: Connect to PlayIt.gg
+    - uses: actions/checkout@v2
+    - name: Setting the Environment Up.
       env:
-        PLAYIT_SECRET: ${{ secrets.PL }}
-      run: |
-        PLAYIT_IP=$(curl -s https://api.playit.gg/v1/tunnel -H "Authorization: Bearer $PLAYIT_SECRET" | jq -r '.ip')
-        PLAYIT_PORT=$(curl -s https://api.playit.gg/v1/tunnel -H "Authorization: Bearer $PLAYIT_SECRET" | jq -r '.port')
-        echo "IP: $PLAYIT_IP"
-        echo "Port: $PLAYIT_PORT"
-        
-        # Keep the workflow running for 6 hours
-        sleep 21600  # 6 hours in seconds
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        PASSWD: ${{secrets.PASSWD}}
+      run: source setup.sh "$PASSWD" "$PASSWD" "$NGROK_AUTH_TOKEN"
+    - name: ngrok is now listening to VNC connections on...
+      run: curl --silent http://127.0.0.1:4040/api/tunnels | jq '.tunnels[0].public_url'
+    - name: Setup tmate Session
+      uses: mxschmitt/action-tmate@v2
