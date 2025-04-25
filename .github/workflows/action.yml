@@ -31,6 +31,13 @@ jobs:
           git clone https://github.com/playit-cloud/playit-agent.git
           cd playit-agent
 
+      - name: Initialize Go Module
+        run: |
+          cd playit-agent
+          # Initialize the Go module if not present
+          go mod init github.com/playit-cloud/playit-agent || true
+          go mod tidy  # Fetch dependencies
+
       - name: Build Playit.gg Agent
         run: |
           cd playit-agent
