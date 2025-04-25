@@ -8,7 +8,7 @@ on:
 
 jobs:
   setup-remote-desktop:
-    runs-on: [macOS-latest]
+    runs-on: macOS-latest
     timeout-minutes: 360  # Set the job to run for 6 hours
 
     steps:
@@ -23,20 +23,22 @@ jobs:
 
       - name: Install Required Tools
         run: |
-          brew install xrdb
+          brew install tiger-vnc
           brew install socat
 
-      - name: Install VNC Server
+      - name: Start VNC Server
         run: |
-          brew install tiger-vnc
-          vncserver -localhost no
+          mkdir -p ~/.vnc
+          echo "github" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+          vncserver :1
 
       - name: Print VNC Connection Info
         run: |
-          echo "VNC Server is running. Use the following connection details:"
+          echo "VNC Server is running!"
           echo "IP Address: $(curl -s ifconfig.me)"
           echo "Port: 5901 (default for VNC)"
-          echo "Use Remote Desktop to connect to this IP address with the username 'runner' and the password 'github'."
+          echo "Password: github"
 
       - name: Keep the Runner Active
         run: |
