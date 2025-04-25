@@ -1,6 +1,6 @@
-# .github/workflows/action.yml
 name: macOS
-on: workflow_dispatch
+on: 
+  workflow_dispatch:
 defaults:
   run:
     shell: bash
@@ -8,13 +8,18 @@ defaults:
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 360  # 6-hour timeout
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup Environment
+    - uses: actions/checkout@v2
+    - name: Setting the Environment Up.
       env:
-        PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
-      run: source setup.sh "$PINGGY_TOKEN"
-    - name: Keep alive for 6 hours
-      run: sleep 21600
+        PASSWD: ${{ secrets.PASSWD }}
+      run: source setup.sh "$PASSWD" "$PASSWD"
+      
+    - name: Get Pinggy Public URL
+      run: |
+        PINGGY_URL=$(ps aux | grep '[s]sh -p 443 -R0:localhost:5900' | awk '{print $NF}' | xargs -I{} curl -s {})
+        echo "Connect via: $PINGGY_URL"
+        
     - name: Setup tmate Session
-      uses: mxschmitt/action-tmate@v3  # Updated to v3 for stability [[7]]
+      uses: mxschmitt/action-tmate@v2
