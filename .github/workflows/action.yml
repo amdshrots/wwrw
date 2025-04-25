@@ -1,4 +1,4 @@
-name: macOS Remote Desktop with Playit.gg
+name: macOS Remote Desktop with Playit.gg (Compiled from Source)
 
 on:
   push:
@@ -15,22 +15,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Homebrew
+      - name: Install Build Tools and Dependencies
         run: |
+          # Install Homebrew if not already installed
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
 
-      - name: Install Playit.gg
+          # Install dependencies for building Playit
+          brew install go git
+
+      - name: Clone Playit.gg Repository
         run: |
-          brew install wget
-          wget https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-macos.zip
-          unzip playit-macos.zip
-          chmod +x playit
-          mv playit /usr/local/bin/
+          # Clone the Playit.gg source code
+          git clone https://github.com/playit-cloud/playit-agent.git
+          cd playit-agent
+
+      - name: Build Playit.gg Agent
+        run: |
+          cd playit-agent
+          # Build the Playit.gg agent using Go
+          go build -o playit
 
       - name: Start Playit.gg Tunnel
         run: |
+          cd playit-agent
           echo "${{ secrets.PLAYIT_SECRET }}" > playit-auth.key
           nohup ./playit -s playit-auth.key > playit.log 2>&1 &
 
