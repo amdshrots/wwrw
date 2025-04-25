@@ -26,13 +26,16 @@ jobs:
           # Enable Remote Login for SSH
           sudo systemsetup -setremotelogin on
 
-          # Ensure SSH server is running
+          # Stop and restart SSH to ensure it's properly loaded
+          sudo launchctl unload -w /System/Library/LaunchDaemons/ssh.plist || true
           sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
 
           # Configure SSH for X11 Forwarding
           echo "X11Forwarding yes" | sudo tee -a /etc/ssh/sshd_config
           echo "X11UseLocalhost yes" | sudo tee -a /etc/ssh/sshd_config
-          sudo launchctl stop com.openssh.sshd
+
+          # Restart SSH service to apply configuration
+          sudo launchctl stop com.openssh.sshd || true
           sudo launchctl start com.openssh.sshd
 
           # Print IP address and SSH details
