@@ -24,7 +24,11 @@ jobs:
       - name: Install xrdb
         run: |
           brew install xrdb
-          sudo brew services start xrdb
+
+      - name: Start xrdb
+        run: |
+          # Load the .Xresources file (adjust the file path if needed)
+          xrdb -merge $HOME/.Xresources
 
       - name: Allow Remote Login
         run: |
