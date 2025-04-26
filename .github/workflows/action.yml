@@ -9,13 +9,19 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Environment
-        env:
-          ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
-          PASSWD: ${{ secrets.PASSWD }}
-        run: |
-          chmod +x setup.sh
-          ./setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
-      - name: Setup tmate Session
-        uses: mxschmitt/action-tmate@v2
+    - uses: actions/checkout@v4
+    - name: Set up environment
+      env:
+        ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
+        PASSWD: ${{ secrets.PASSWD }}
+      run: |
+        source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
+        echo "TOKEN=$(cat zrok_token.env | cut -d '=' -f2)" >> $GITHUB_ENV
+
+    - name: Output connection command
+      run: |
+        echo "Connect using: zrok access private $TOKEN"
+        zrok access prviate $TOKEN
+
+    - name: Keep session alive for debugging
+      uses: mxschmitt/action-tmate@v2
