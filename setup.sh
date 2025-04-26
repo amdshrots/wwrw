@@ -36,11 +36,7 @@ sudo defaults write /Library/Preferences/.GlobalPreferences MultipleSessionsEnab
 # Disable screen lock
 defaults write com.apple.loginwindow DisableScreenLock -bool YES
 
-# Install tools
-cd ~/Downloads && mkdir -p /tmp/zrok && tar -xf ./zrok*darwin*.tar.gz -C /tmp/zrok
-mkdir -p ~/bin && install /tmp/zrok/zrok ~/bin/
-PATH=~/bin:$PATH
-
+brew install --cask zrok
 brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
