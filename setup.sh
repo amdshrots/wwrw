@@ -47,20 +47,7 @@ brew install zrok
 brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
-if ! command -v zrok &> /dev/null; then
-    echo "zrok could not be found, ensure it is installed correctly."
-    exit 1
-fi
-
-if [ -z "$ZROK_TOKEN" ]; then
-    echo "ZROK_TOKEN is not set. Please add it to GitHub Secrets."
-    exit 1
-fi
-
-
 zrok --help
-zrok config set apiEndpoint https://api-v1.zrok.io/ || { echo "Failed to set zrok apiEndpoint"; exit 1; }
-zrok enable $ZROK_TOKEN || { echo "Failed to enable zrok with the provided token"; exit 1; }
-zrok access private $3 --bind localhost:5900
-zrok reserve private localhost:5900 --backend-mode tcpTunnel --unique-name $RESERVED_SHARE
-share reserved $RESERVED_SHARE
+zrok enable $3 --headless
+zrok share private --backend-mode tcpTunnel localhost:5900 --headless
+zrok status
