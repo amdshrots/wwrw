@@ -49,5 +49,5 @@ brew install --cask chrome-remote-desktop-host
 
 zrok --help
 zrok enable $3
-zrok share private --backend-mode tcpTunnel localhost:5900
-zrok status
+zrok reserve private localhost:5900 --backend-mode tcpTunnel --unique-name $RESERVED_SHARE
+share reserved $RESERVED_SHARE
