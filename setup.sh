@@ -48,6 +48,7 @@ brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
 zrok --help
+zrok config set apiEndpoint https://api-v1.zrok.io/
 zrok enable $3
 zrok share private --backend-mode tcpTunnel localhost:5900
 SHARE_TOKEN=$(zrok ls | grep tcptunnel | awk '{print $3}')
