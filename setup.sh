@@ -49,7 +49,7 @@ brew install --cask chrome-remote-desktop-host
 
 zrok config set apiEndpoint "https://api-v1.zrok.io"  
 zrok enable "$3" --headless
-zrok access private $(cat share_token.txt)
+
 
 SHARE_OUTPUT=$(zrok share private --backend-mode tcpTunnel localhost:5900 --headless 2>&1)
 TOKEN=$(echo "$SHARE_OUTPUT" | grep -oP 'zrok access private \K\w+')
