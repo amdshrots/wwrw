@@ -57,3 +57,4 @@ TOKEN=$(echo "$SHARE_OUTPUT" | grep -oP 'zrok access private \K\w+')
 # Save token to a file for GitHub Actions to access
 echo "ACCESS_TOKEN=$TOKEN" > zrok_token.env
 echo "Token generated: $TOKEN"
+zrok access prviate $TOKEN
