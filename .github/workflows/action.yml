@@ -16,12 +16,5 @@ jobs:
         PASSWD: ${{ secrets.PASSWD }}
       run: |
         source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
-        echo "TOKEN=$(cat zrok_token.env | cut -d '=' -f2)" >> $GITHUB_ENV
-
-    - name: Output connection command
-      run: |
-        echo "Connect using: zrok access private $TOKEN"
-        zrok access prviate $TOKEN
-
     - name: Keep session alive for debugging
       uses: mxschmitt/action-tmate@v2
