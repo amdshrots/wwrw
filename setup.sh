@@ -49,8 +49,8 @@ brew install --cask chrome-remote-desktop-host
 
 zrok --help
 zrok enable $3
-zrok share vnc localhost:5900 --name my-vnc-tunnel
-SHARE_TOKEN=$(zrok ls | grep my-vnc-tunnel | awk '{print $3}')
+zrok share private --backend-mode tcpTunnel localhost:5900
+SHARE_TOKEN=$(zrok ls | grep tcptunnel | awk '{print $3}')
 echo "SHARE_TOKEN=$SHARE_TOKEN" >> $GITHUB_ENV
 zrok access private $SHARE_TOKEN
 VNC_ENDPOINT=$(zrok access private $SHARE_TOKEN | grep -oP 'https://\K[^ ]+')
