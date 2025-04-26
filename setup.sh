@@ -47,8 +47,8 @@ defaults write com.apple.loginwindow AllowList -string '*'
 
 brew install zrok
 
-zrok config set apiEndpoint https://api-v1.zrok.io
-
+set -e  
+echo "Starting zrok tunnel..."
 zrok enable --token "$ZROK_TOKEN" tcp 5900 || { echo "zrok failed"; exit 1; }
 
 echo "Scheduling shutdown in 6 hours..."
