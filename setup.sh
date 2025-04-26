@@ -48,6 +48,8 @@ brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
 zrok --help
+zrok config set apiEndpoint https://api-v1.zrok.io/
 zrok enable $3
+zrok access private $3 --bind localhost:5900
 zrok reserve private localhost:5900 --backend-mode tcpTunnel --unique-name $RESERVED_SHARE
 share reserved $RESERVED_SHARE
