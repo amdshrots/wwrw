@@ -41,5 +41,5 @@ brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
 zrok --help
-zrok config --token $3
+zrok enable $3
 zrok tunnel tcp 5900 --name my-vnc-tunnel --region in &
