@@ -10,11 +10,6 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Debugging Environment
-      run: |
-        echo "Current Directory: $(pwd)"
-        echo "Contents of Directory:"
-        ls -la
     - name: Setting the Environment Up.
       env:
         ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
