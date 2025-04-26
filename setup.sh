@@ -36,10 +36,17 @@ sudo defaults write /Library/Preferences/.GlobalPreferences MultipleSessionsEnab
 # Disable screen lock
 defaults write com.apple.loginwindow DisableScreenLock -bool YES
 
-brew install zrok
+curl -s https://zrok.io/download | bash
+export PATH=$PATH:$HOME/.zrok/bin
 brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
 zrok --help
 zrok enable $3
-zrok tunnel tcp 5900 --name my-vnc-tunnel --region in &
+zrok start vnc localhost:5900 --name my-vnc-tunnel
+SHARE_TOKEN=$(zrok ls | grep my-vnc-tunnel | awk '{print $3}')
+echo "SHARE_TOKEN=$SHARE_TOKEN" >> $GITHUB_ENV
+zrok access private $SHARE_TOKEN
+VNC_ENDPOINT=$(zrok access private $SHARE_TOKEN | grep -oP 'https://\K[^ ]+')
+echo "VNC endpoint: $VNC_ENDPOINT"
+echo "VNC_ENDPOINT=$VNC_ENDPOINT" >> $GITHUB_ENV
