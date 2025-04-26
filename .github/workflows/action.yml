@@ -15,7 +15,5 @@ jobs:
         ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
         PASSWD: ${{ secrets.PASSWD }}
       run: source setup.sh "$PASSWD" "$PASSWD" "$ZROK_TOKEN"
-    - name: Get zrok tunnel endpoint
-      run: curl -s http://127.0.0.1:8080/api/tunnels | jq -r '.tunnels[0].public_url'
     - name: Setup tmate Session
       uses: mxschmitt/action-tmate@v2
