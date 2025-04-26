@@ -48,12 +48,6 @@ brew install --cask brave-browser
 brew install --cask chrome-remote-desktop-host
 
 zrok --help
-zrok config set apiEndpoint https://api-v1.zrok.io/
 zrok enable $3
 zrok share private --backend-mode tcpTunnel localhost:5900
-SHARE_TOKEN=$(zrok ls | grep tcptunnel | awk '{print $3}')
-echo "SHARE_TOKEN=$SHARE_TOKEN" >> $GITHUB_ENV
-zrok access private $SHARE_TOKEN
-VNC_ENDPOINT=$(zrok access private $SHARE_TOKEN | grep -oP 'https://\K[^ ]+')
-echo "VNC endpoint: $VNC_ENDPOINT"
-echo "VNC_ENDPOINT=$VNC_ENDPOINT" >> $GITHUB_ENV
+zrok status
