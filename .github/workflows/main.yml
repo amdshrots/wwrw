@@ -1,4 +1,4 @@
-name: macOS Playit.gg + VNC (Headless Only)
+name: macOS VNC Server
 
 on:
   workflow_dispatch:
@@ -10,21 +10,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install TigerVNC
-        run: brew install tiger-vnc
+      - name: Install dependencies
+        run: brew install tightvnc
 
-      - name: Set VNC password
+      - name: Start VNC server
         run: |
-          mkdir -p ~/.vnc
-          echo "password" | /opt/homebrew/bin/tigervncpasswd -f > ~/.vnc/passwd
-          chmod 600 ~/.vnc/passwd
+          /usr/local/bin/tightvncserver :1 -geometry 1024x768 -depth 24
 
-      - name: Start VNC Server
+      - name: Get IP Address
         run: |
-          /opt/homebrew/bin/tigervncserver :1 -geometry 1280x800 -depth 24
+          echo "IP_ADDRESS=$(ipconfig getifaddr en0)" >> $GITHUB_ENV
 
-      - name: Run Playit agent with secret
-        env:
-          PLAYIT_SECRET: ${{ secrets.PL }}
-        run: |
-          ./target/release/playit-cli --secret "$PLAYIT_SECRET"
+      - name: Start Pinggy Tunnel
+        uses: pinggy-io/pinggy-action@v1
+        id: pinggy
+        with:
+          token: ${{ secrets.PINGGY_TOKEN }}
+          target: ${{ env.IP_ADDRESS }}:5901
+
+      - name: Print VNC connection details
+        run: | 
+          echo "Server: ${{ steps.pinggy.outputs.tunnel_url }}"
+          echo "Password: kaiden"
+          
+      
+
