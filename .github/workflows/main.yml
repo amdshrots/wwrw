@@ -13,7 +13,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew install tightvnc
-          CURL -S https://pinggy.io/get.sh | bash
+          curl -s https://pinggy.io/get.sh | bash
 
       - name: Start VNC server
         run: |
