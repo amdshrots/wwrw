@@ -12,12 +12,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install tightvnc
+          brew install tiger-vnc
           curl -s https://pinggy.io/get.sh | bash
 
       - name: Start VNC server
         run: |
-          /usr/local/bin/tightvncserver :1 -geometry 1024x768 -depth 24
+          /usr/local/bin/vncserver :1 -geometry 1024x768 -depth 24
 
       - name: Get IP Address
         run: |
