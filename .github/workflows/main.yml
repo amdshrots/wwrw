@@ -4,8 +4,8 @@ on:
 
 env:
   VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
-  VNC_PASS: ${{ secrets.VNC_PASSWORD }}  # MUST be set in repository secrets!
-  PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}  # MUST be set in repository secrets!
+  VNC_PASS: ${{ secrets.VNC_PASSWORD }}
+  PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
 
 jobs:
   setup-macos-vnc:
@@ -15,7 +15,7 @@ jobs:
       - name: Validate Required Secrets
         run: |
           if [ -z "$VNC_PASS" ] || [ -z "$PINGGY_TOKEN" ]; then
-            echo "::error::Missing required secrets! Please set VNC_PASSWORD and PINGGY_TOKEN in repository settings."
+            echo "::error::Missing required secrets! Please set VNC_PASSWORD and PINGGY_TOKEN."
             exit 1
           fi
 
@@ -24,44 +24,41 @@ jobs:
           VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
           VNC_PASS: ${{ secrets.VNC_PASSWORD }}
         run: |
-          # Create admin user (let sysadminctl auto-assign UID)
           sudo sysadminctl -addUser "$VNC_USER" -password "$VNC_PASS" -admin
-          
-          # Prevent sleep
           sudo pmset -a displaysleep 0 sleep 0
 
       - name: Enable VNC/Screen Sharing
         env:
           VNC_PASS: ${{ secrets.VNC_PASSWORD }}
         run: |
-          # Enable Remote Management with VNC
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all \
             -clientopts -setvnclegacy -vnclegacy yes \
             -clientopts -setvncpw -vncpw "$VNC_PASS" \
-            -restart -agent || echo "kickstart failed, continuing anyway..."
+            -restart -agent || echo "kickstart failed, continuing..."
 
       - name: Grant Screen Recording Permissions
         run: |
           TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
           
-          # Detect actual column count
+          # Detect schema
           COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
           echo "Detected TCC.db schema with $COL_COUNT columns"
           
-          # Build dynamic INSERT with auth_version=1 (NOT NULL) and remaining NULLs
-          # Base values: service, client, client_type, auth_value, auth_reason, auth_version
+          # Build VALUES with auth_version=1 (NOT NULL) and correct NULL count
           BASE_VALUES="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1"
           NULL_COUNT=$((COL_COUNT - 6))
           
-          VALUES="$BASE_VALUES"
-          for i in $(seq 1 $NULL_COUNT); do
-            VALUES="$VALUES,NULL"
-          done
+          # Generate NULLs safely using printf
+          NULLS=$(printf ',NULL%.0s' $(seq 1 $NULL_COUNT))
+          VALUES="$BASE_VALUES$NULLS"
           
-          # Execute for both services
+          # Insert for Screen Capture
           sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($VALUES);"
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',$BASE_VALUES,$(yes NULL | head -$NULL_COUNT | tr '\n' ',' | sed 's/,$//'));"
+          
+          # Insert for Accessibility (reuse NULLs)
+          ACCESSIBILITY_VALUES="'kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,1$NULLS"
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($ACCESSIBILITY_VALUES);"
           
           # Restart service
           sudo launchctl kickstart -k system/com.apple.screensharing
@@ -70,29 +67,22 @@ jobs:
         env:
           PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
         run: |
-          # Download Pinggy
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
-          
-          # Start tunnel in background
           /tmp/pinggy -p 5900 -t tcp -k "$PINGGY_TOKEN" > /tmp/pinggy-url.txt 2>&1 &
-          sleep 10  # Wait for tunnel initialization
+          sleep 10
 
-      - name: Display Connection Information
+      - name: Display Connection Info
         env:
           VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
-          # Extract URL from Pinggy output
-          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check Pinggy dashboard at https://a.pinggy.io/")
-          
+          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check https://a.pinggy.io/")
           echo "=========================================="
           echo "✅ macOS VNC is ready!"
           echo ""
           echo "VNC Address: $URL"
           echo "Username: $VNC_USER"
-          echo "Password: [REDACTED - see GitHub secrets]"
-          echo ""
-          echo "Connect with any VNC client within 6 hours."
+          echo "Password: [REDACTED]"
           echo "=========================================="
 
       - name: Keep Runner Alive (6 Hours)
@@ -106,5 +96,5 @@ jobs:
           echo "Cleaning up..."
           sudo sysadminctl -deleteUser "$VNC_USER" 2>/dev/null || true
           sudo pkill -f pinggy || true
-          echo "Cleanup completed."
+          echo "Completed."
           
