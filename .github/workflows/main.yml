@@ -1,11 +1,12 @@
-name: macOS VNC Tunnel (Direct Token)
+name: macOS VNC Tunnel (Hardcoded Credentials)
 on:
   workflow_dispatch:
 
 env:
-  VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
-  VNC_PASS: ${{ secrets.VNC_PASSWORD }}
-  # Hardcoded token - will be visible in logs
+  # HARDCODED - WILL BE VISIBLE IN LOGS
+  VNC_USER: runneradmin
+  VNC_PASS: p@ssw0rd!
+  # HARDCODED TOKEN - COMPROMISED
   PINGGY_TOKEN: gtcxZbEfnfR+tcp@eu.free.pinggy.io
 
 jobs:
@@ -13,29 +14,20 @@ jobs:
     runs-on: macos-13
     
     steps:
-      - name: Validate Secrets
+      - name: Create Remote User (Credentials Visible)
         run: |
-          if [ -z "$VNC_PASS" ]; then
-            echo "::error::Missing VNC_PASSWORD secret!"
-            exit 1
-          fi
-
-      - name: Create Remote User
-        env:
-          VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
-          VNC_PASS: ${{ secrets.VNC_PASSWORD }}
-        run: |
+          echo "Creating user: $VNC_USER with password: $VNC_PASS"
           sudo sysadminctl -addUser "$VNC_USER" -password "$VNC_PASS" -admin
           sudo pmset -a displaysleep 0 sleep 0
 
       - name: Enable VNC
-        env:
-          VNC_PASS: ${{ secrets.VNC_PASSWORD }}
         run: |
+          echo "Setting VNC password: $VNC_PASS"
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all \
             -clientopts -setvnclegacy -vnclegacy yes \
-            -clientopts -setvncpw -vncpw "$VNC_PASS" -restart -agent || true
+            -clientopts -setvncpw -vncpw "$VNC_PASS" \
+            -restart -agent || echo "kickstart completed with warnings"
 
       - name: Grant TCC Permissions
         run: |
@@ -51,39 +43,41 @@ jobs:
           sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($ACCESSIBILITY);"
           sudo launchctl kickstart -k system/com.apple.screensharing
 
-      - name: Install and Start Pinggy (Token Visible)
-        env:
-          PINGGY_TOKEN: gtcxZbEfnfR+tcp@eu.free.pinggy.io
+      - name: Install and Start Pinggy (Fixed Binary)
         run: |
-          curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
+          echo "Downloading Pinggy CLI..."
+          # CORRECT BINARY FOR macOS INTEL
+          curl -L https://a.pinggy.io/pinggy_darwin_amd64 -o /tmp/pinggy
           chmod +x /tmp/pinggy
           
-          echo "Starting Pinggy tunnel..."
+          echo "Starting tunnel with token: $PINGGY_TOKEN"
           /tmp/pinggy -p 5900 -t tcp "$PINGGY_TOKEN" > /tmp/pinggy-url.txt 2>&1 &
           sleep 10
           
-          # Display raw output for debugging
-          echo "---Raw Pinggy Output---"
+          echo "---RAW PINGGY OUTPUT---"
           cat /tmp/pinggy-url.txt
-          echo "---End Output---"
+          echo "---END OUTPUT---"
           
-          # Extract and show URL
-          URL=$(grep -E 'tcp://[^ ]+' /tmp/pinggy-url.txt | head -1 || echo "URL extraction failed")
+          # Extract tunnel URL
+          URL=$(grep -o 'tcp://[^ ]*' /tmp/pinggy-url.txt | head -1)
           echo "=========================================="
           echo "🌐 TUNNEL ADDRESS: $URL"
           echo "=========================================="
-          echo "::notice::VNC Tunnel: $URL"
 
-      - name: Display Connection Info
-        env:
-          VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
+      - name: Display Connection Details
         run: |
           echo "=========================================="
-          echo "✅ VNC Ready!"
-          echo "Username: $VNC_USER"
-          echo "Password: [REDACTED]"
+          echo "✅ VNC SERVER READY!"
           echo ""
-          echo "CHECK PREVIOUS STEP FOR TUNNEL ADDRESS!"
+          echo "🔐 CREDENTIALS (HARDCODED):"
+          echo "Username: $VNC_USER"
+          echo "Password: $VNC_PASS"
+          echo ""
+          echo "🌐 CONNECTION INFO:"
+          echo "Tunnel Address: See above step"
+          echo "VNC Port: 5900"
+          echo ""
+          echo "⏱️ Runner expires in 6 hours"
           echo "=========================================="
 
       - name: Keep Alive (6h)
@@ -91,9 +85,8 @@ jobs:
 
       - name: Cleanup
         if: always()
-        env:
-          VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
+          echo "Cleaning up user: $VNC_USER"
           sudo sysadminctl -deleteUser "$VNC_USER" 2>/dev/null || true
           sudo pkill -f pinggy || true
           
