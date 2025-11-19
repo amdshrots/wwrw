@@ -12,14 +12,14 @@ jobs:
     runs-on: macos-13
     
     steps:
-      - name: Validate Required Secrets
+      - name: Validate Secrets
         run: |
           if [ -z "$VNC_PASS" ] || [ -z "$PINGGY_TOKEN" ]; then
-            echo "::error::Missing required secrets! Please set VNC_PASSWORD and PINGGY_TOKEN."
+            echo "::error::Missing VNC_PASSWORD or PINGGY_TOKEN secrets!"
             exit 1
           fi
 
-      - name: Create Secure Remote User
+      - name: Create Remote User
         env:
           VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
           VNC_PASS: ${{ secrets.VNC_PASSWORD }}
@@ -27,74 +27,56 @@ jobs:
           sudo sysadminctl -addUser "$VNC_USER" -password "$VNC_PASS" -admin
           sudo pmset -a displaysleep 0 sleep 0
 
-      - name: Enable VNC/Screen Sharing
+      - name: Enable VNC
         env:
           VNC_PASS: ${{ secrets.VNC_PASSWORD }}
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all \
             -clientopts -setvnclegacy -vnclegacy yes \
-            -clientopts -setvncpw -vncpw "$VNC_PASS" \
-            -restart -agent || echo "kickstart failed, continuing..."
+            -clientopts -setvncpw -vncpw "$VNC_PASS" -restart -agent || true
 
-      - name: Grant Screen Recording Permissions
+      - name: Grant TCC Permissions
         run: |
           TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
-          
-          # Detect schema
           COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
-          echo "Detected TCC.db schema with $COL_COUNT columns"
-          
-          # Build VALUES with auth_version=1 (NOT NULL) and correct NULL count
           BASE_VALUES="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1"
-          NULL_COUNT=$((COL_COUNT - 6))
+          NULLS=$(printf ',NULL%.0s' $(seq 1 $((COL_COUNT - 6))))
           
-          # Generate NULLs safely using printf
-          NULLS=$(printf ',NULL%.0s' $(seq 1 $NULL_COUNT))
-          VALUES="$BASE_VALUES$NULLS"
-          
-          # Insert for Screen Capture
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($VALUES);"
-          
-          # Insert for Accessibility (reuse NULLs)
-          ACCESSIBILITY_VALUES="'kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,1$NULLS"
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($ACCESSIBILITY_VALUES);"
-          
-          # Restart service
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($BASE_VALUES$NULLS);"
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',$BASE_VALUES$NULLS);"
           sudo launchctl kickstart -k system/com.apple.screensharing
 
-      - name: Install and Start Pinggy
+      - name: Start Pinggy CLI
         env:
           PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
         run: |
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
-          /tmp/pinggy -p 5900 -t tcp -k "$PINGGY_TOKEN" > /tmp/pinggy-url.txt 2>&1 &
+          # Use token from secrets
+          /tmp/pinggy -p 5900 -t tcp "$PINGGY_TOKEN+tcp@eu.free.pinggy.io" > /tmp/pinggy-url.txt 2>&1 &
           sleep 10
 
       - name: Display Connection Info
         env:
           VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
-          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check https://a.pinggy.io/")
+          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check Pinggy dashboard")
           echo "=========================================="
-          echo "✅ macOS VNC is ready!"
-          echo ""
-          echo "VNC Address: $URL"
-          echo "Username: $VNC_USER"
+          echo "✅ VNC Ready!"
+          echo "Address: $URL"
+          echo "User: $VNC_USER"
           echo "Password: [REDACTED]"
           echo "=========================================="
 
-      - name: Keep Runner Alive (6 Hours)
+      - name: Keep Alive (6h)
         run: sleep 21600
 
-      - name: Cleanup (Always Runs)
+      - name: Cleanup
         if: always()
         env:
           VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
-          echo "Cleaning up..."
           sudo sysadminctl -deleteUser "$VNC_USER" 2>/dev/null || true
           sudo pkill -f pinggy || true
-          echo "Completed."
           
