@@ -1,79 +1,91 @@
-name: macOS RDP Tunnel (Final Version)
+name: macOS VNC Tunnel (Production-Ready)
 on:
   workflow_dispatch:
 
+env:
+  VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
+  VNC_PASS: ${{ secrets.VNC_PASSWORD }}  # Must be set!
+  PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
+
 jobs:
-  setup-macos-rdp:
-    runs-on: macos-13 # Using macos-13 (Ventura) for stability
-
+  setup-macos-vnc:
+    runs-on: macos-13
+    
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Create a New User for Remote Access
+      - name: Validate Secrets
         run: |
-          # Create a new user with a known password and grant admin privileges.
-          # This is the most reliable way to ensure you can log in.
-          # The user will be named 'github-user' with the password 'p@ssw0rd!'
-          sudo sysadminctl -addUser github-user -password p@ssw0rd! -admin
+          if [ -z "$VNC_PASS" ] || [ -z "$PINGGY_TOKEN" ]; then
+            echo "::error::Missing required secrets: VNC_PASSWORD and/or PINGGY_TOKEN"
+            exit 1
+          fi
 
-          # Prevent the Mac from sleeping
+      - name: Create Secure Remote User
+        run: |
+          # Generate random UID to avoid conflicts
+          UID=$(shuf -i 2000-3000 -n 1)
+          sudo sysadminctl -addUser "$VNC_USER" -password "$VNC_PASS" -uid $UID -admin
           sudo pmset -a displaysleep 0 sleep 0
 
-      - name: Enable and Configure Remote Management (VNC)
+      - name: Enable VNC with Error Handling
         run: |
-          # This command enables Screen Sharing and grants all necessary privileges.
-          # It will apply to all users, including our new 'github-user'.
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          if ! sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all \
             -clientopts -setvnclegacy -vnclegacy yes \
-            -clientopts -setvncpw -vncpw p@ssw0rd! \
-            -restart -agent
+            -clientopts -setvncpw -vncpw "$VNC_PASS" \
+            -restart -agent; then
+            echo "::warning::kickstart failed (may be deprecated), attempting alternative..."
+            sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+          fi
 
-      - name: Fix Black Screen by Granting Screen Recording Permissions
+      - name: Grant TCC Permissions (Adaptive)
         run: |
-          # This command grants the necessary permissions to prevent the black screen.
-          # It is updated for modern macOS versions.
-          sudo /usr/bin/sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,NULL);"
-          sudo /usr/bin/sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,NULL);"
+          TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
+          
+          # Detect schema version
+          COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
+          echo "Detected TCC.db schema with $COL_COUNT columns"
+          
+          # Build VALUES clause with correct column count
+          VALUES="('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1"
+          for i in $(seq 1 $(($COL_COUNT - 5))); do
+            VALUES="$VALUES,NULL"
+          done
+          VALUES="$VALUES)"
+          
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES$VALUES;"
+          
+          # Restart service
+          sudo launchctl kickstart -k system/com.apple.screensharing
 
-          # Restart the screen sharing service to ensure the new permissions are loaded
-          sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
-          sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
-
-      - name: Download and Set Up Pinggy for Tunneling
+      - name: Start Pinggy Tunnel
         run: |
-          # Download Pinggy CLI tool
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
+          
+          # Run in background and capture output
+          /tmp/pinggy -p 5900 -t tcp -k "$PINGGY_TOKEN" > /tmp/pinggy-url.txt 2>&1 &
+          sleep 10
+          
+          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check Pinggy dashboard")
+          echo "::notice::VNC URL: $URL"
 
-      - name: Start Pinggy Tunnel and Display Connection Info
+      - name: Display Connection Info
         run: |
-          # Start Pinggy in the background to tunnel port 5900 (VNC)
-          /tmp/pinggy -p 5900 -t tcp -k ${{ secrets.PINGGY_TOKEN }} &
-          PINGGY_PID=$!
-          echo "Pinggy started with PID: $PINGGY_PID"
-
-          # Wait a moment for the tunnel to initialize
-          sleep 15
-
-          # Display connection instructions clearly in the log
           echo "=========================================="
-          echo "macOS Remote Desktop is ready!"
+          echo "✅ macOS VNC is ready!"
           echo ""
-          echo "To get your connection URL, go to:"
-          echo "https://a.pinggy.io/"
-          echo ""
-          echo "VNC Address: Use the URL from the Pinggy dashboard"
-          echo "VNC Port: 5900"
-          echo "Username: github-user"
-          echo "Password: p@ssw0rd!"
+          echo "VNC Address: See Pinggy URL above or https://a.pinggy.io/"
+          echo "Username: $VNC_USER"
+          echo "Password: [REDACTED]"
           echo "=========================================="
 
-      - name: Keep the GitHub Action Runner Alive
+      - name: Keep Alive (Efficient)
+        run: sleep 21600  # 6 hours
+
+      - name: Cleanup
+        if: always()
         run: |
-          # This loop keeps the workflow running for up to 6 hours
-          echo "Workflow will stay active for 6 hours."
-          for i in {1..21600}; do
-            sleep 1
-          done
+          echo "Removing temporary user..."
+          sudo sysadminctl -deleteUser "$VNC_USER" -keepHome 2>/dev/null || true
+          sudo pkill -f pinggy || true
+          
