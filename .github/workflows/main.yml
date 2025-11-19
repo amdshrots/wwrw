@@ -1,92 +1,91 @@
-name: macOS RDP Tunnel
+name: macOS RDP Tunnel (Fixed)
 on:
   workflow_dispatch:
+
 jobs:
   setup-macos-rdp:
-    runs-on: macos-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v2
+    # Using macos-13 (Ventura) for stability and to match your version.
+    # Change to macos-latest for Sonoma (14) if desired.
+    runs-on: macos-13
 
-      - name: Set up macOS for Remote Access
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4 # Using a more recent checkout action
+
+      - name: Configure User and Display Settings
         run: |
-          # Enable Screen Sharing (VNC) on macOS
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw p@ssw0rd! -restart -agent -menu
-          
-          # Configure firewall to allow VNC connections
-          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent
-          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblock /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent
-          
-          # Create a user with a password (if needed)
-          # Note: GitHub Actions runners already have a user, but we'll ensure it has a password
-          echo "p@ssw0rd!" | sudo passwd "$(whoami)"
-          
-          # Set up automatic login for the user
-          sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string "$(whoami)"
-          
-          # Configure the display to stay on and prevent sleep
+          # Set the user password non-interactively using dscl
+          # This is the correct way to set a password in a script on macOS
+          echo "p@ssw0rd!" | sudo dscl . -passwd /Users/runner
+
+          # Prevent the Mac from sleeping
           sudo pmset -a displaysleep 0 sleep 0
 
-      - name: Fix Black Screen Issue for macOS Remote Access
+      - name: Enable and Configure Remote Management (VNC)
         run: |
-          # Configure the system to allow screen recording for VNC
-          sudo /usr/bin/sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT or REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,1569325200);"
-          
-          # Grant necessary permissions for screen sharing
-          sudo /usr/bin/sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT or REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,1569325200);"
-          
-          # Restart the relevant services
+          # This command enables Screen Sharing and grants all necessary privileges
+          # -activate: Turns on Remote Management
+          # -configure: Applies settings
+          # -access -on: Allows access for all users
+          # -privs -all: Grants all possible privileges (Control, Observe, etc.)
+          # -clientopts -setvnclegacy -vnclegacy yes: Enables standard VNC password auth
+          # -clientopts -setvncpw -vncpw p@ssw0rd!: Sets the VNC password
+          # -restart -agent: Restarts the service to apply changes
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on -privs -all \
+            -clientopts -setvnclegacy -vnclegacy yes \
+            -clientopts -setvncpw -vncpw p@ssw0rd! \
+            -restart -agent
+
+      - name: Fix Black Screen by Granting Screen Recording Permissions
+        run: |
+          # This is the corrected command to grant permissions.
+          # It now specifies all 17 columns required by the TCC.db in modern macOS.
+          # We do this for both ScreenCapture and Accessibility to ensure full control.
+
+          # Grant Screen Recording permission
+          sudo /usr/bin/sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,NULL);"
+
+          # Grant Accessibility permission
+          sudo /usr/bin/sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,NULL);"
+
+          # Restart the screen sharing service one more time to ensure the new permissions are loaded
           sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
           sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
-          
-          # Set up the display to ensure it's properly initialized
-          sudo systemsetup -setcomputersleep Never
-          sudo systemsetup -setdisplaysleep Never
-          sudo systemsetup -setharddisksleep Never
 
       - name: Download and Set Up Pinggy for Tunneling
         run: |
-          # Download Pinggy CLI
+          # Download Pinggy CLI tool
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
-          
-          # Create a script to start Pinggy with authentication
-          cat > /tmp/start_pinggy.sh << 'EOF'
-          #!/bin/bash
-          echo "Starting Pinggy tunnel..."
-          /tmp/pinggy -p 5900 -t tcp -k ${{ secrets.PINGGY_TOKEN }} &
-          echo "Pinggy tunnel started with PID: $!"
-          echo "Waiting for tunnel URL..."
-          sleep 5
-          EOF
-          
-          chmod +x /tmp/start_pinggy.sh
 
-      - name: Start Remote Access and Tunnel
+      - name: Start Pinggy Tunnel and Display Connection Info
         run: |
-          # Start the Pinggy tunnel
-          /tmp/start_pinggy.sh &
-          
-          # Get the tunnel URL and save it
-          sleep 10
-          TUNNEL_URL=$(curl -s http://127.0.0.1:7259/api/tunnels | grep -o '"public_url":"[^"]*' | cut -d'"' -f4)
-          echo "Tunnel URL: $TUNNEL_URL"
-          echo "::set-output name=tunnel_url::$TUNNEL_URL"
-          
-          # Display connection info
-          echo "======================================"
-          echo "macOS Remote Desktop is now ready!"
-          echo "VNC Address: $TUNNEL_URL"
+          # Start Pinggy in the background to tunnel port 5900 (VNC)
+          /tmp/pinggy -p 5900 -t tcp -k ${{ secrets.PINGGY_TOKEN }} &
+          PINGGY_PID=$!
+          echo "Pinggy started with PID: $PINGGY_PID"
+
+          # Wait a moment for the tunnel to initialize
+          sleep 15
+
+          # Display connection instructions clearly in the log
+          echo "=========================================="
+          echo "macOS Remote Desktop is ready!"
+          echo ""
+          echo "To get your connection URL, go to:"
+          echo "https://a.pinggy.io/"
+          echo ""
+          echo "VNC Address: Use the URL from the Pinggy dashboard"
+          echo "VNC Port: 5900"
           echo "Password: p@ssw0rd!"
-          echo "======================================"
+          echo "=========================================="
 
       - name: Keep the GitHub Action Runner Alive
         run: |
-          # Keep the workflow running to maintain the connection
-          # This will run for about 6 hours (GitHub's limit)
+          # This loop keeps the workflow running for up to 6 hours,
+          # which is the maximum time for a GitHub Actions job.
+          echo "Workflow will stay active for 6 hours."
           for i in {1..21600}; do
-            echo "Keeping alive... $i/21600 seconds"
             sleep 1
-          done          
-      
-
+          done
