@@ -4,88 +4,103 @@ on:
 
 env:
   VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
-  VNC_PASS: ${{ secrets.VNC_PASSWORD }}  # Must be set!
-  PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
+  VNC_PASS: ${{ secrets.VNC_PASSWORD }}  # MUST be set in repository secrets!
+  PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}  # MUST be set in repository secrets!
 
 jobs:
   setup-macos-vnc:
     runs-on: macos-13
     
     steps:
-      - name: Validate Secrets
+      - name: Validate Required Secrets
         run: |
           if [ -z "$VNC_PASS" ] || [ -z "$PINGGY_TOKEN" ]; then
-            echo "::error::Missing required secrets: VNC_PASSWORD and/or PINGGY_TOKEN"
+            echo "::error::Missing required secrets! Please set VNC_PASSWORD and PINGGY_TOKEN in repository settings."
             exit 1
           fi
 
       - name: Create Secure Remote User
+        env:
+          VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
+          VNC_PASS: ${{ secrets.VNC_PASSWORD }}
         run: |
-          # Generate random UID to avoid conflicts
-          UID=$(shuf -i 2000-3000 -n 1)
-          sudo sysadminctl -addUser "$VNC_USER" -password "$VNC_PASS" -uid $UID -admin
+          # Create admin user (let sysadminctl auto-assign UID)
+          sudo sysadminctl -addUser "$VNC_USER" -password "$VNC_PASS" -admin
+          
+          # Prevent sleep
           sudo pmset -a displaysleep 0 sleep 0
 
-      - name: Enable VNC with Error Handling
+      - name: Enable VNC/Screen Sharing
+        env:
+          VNC_PASS: ${{ secrets.VNC_PASSWORD }}
         run: |
-          if ! sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          # Enable Remote Management with VNC
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all \
             -clientopts -setvnclegacy -vnclegacy yes \
             -clientopts -setvncpw -vncpw "$VNC_PASS" \
-            -restart -agent; then
-            echo "::warning::kickstart failed (may be deprecated), attempting alternative..."
-            sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
-          fi
+            -restart -agent || echo "kickstart failed, continuing anyway..."
 
-      - name: Grant TCC Permissions (Adaptive)
+      - name: Grant Screen Recording Permissions
         run: |
           TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
           
-          # Detect schema version
+          # Detect actual column count
           COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
           echo "Detected TCC.db schema with $COL_COUNT columns"
           
-          # Build VALUES clause with correct column count
-          VALUES="('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1"
+          # Build dynamic INSERT for any schema (13-18+ columns)
+          VALUES="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1"
           for i in $(seq 1 $(($COL_COUNT - 5))); do
             VALUES="$VALUES,NULL"
           done
-          VALUES="$VALUES)"
           
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES$VALUES;"
+          # Execute for both services
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($VALUES);"
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',$VALUES);"
           
           # Restart service
           sudo launchctl kickstart -k system/com.apple.screensharing
 
-      - name: Start Pinggy Tunnel
+      - name: Install and Start Pinggy
+        env:
+          PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
         run: |
+          # Download Pinggy
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
           
-          # Run in background and capture output
+          # Start tunnel in background
           /tmp/pinggy -p 5900 -t tcp -k "$PINGGY_TOKEN" > /tmp/pinggy-url.txt 2>&1 &
-          sleep 10
-          
-          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check Pinggy dashboard")
-          echo "::notice::VNC URL: $URL"
+          sleep 10  # Wait for tunnel initialization
 
-      - name: Display Connection Info
+      - name: Display Connection Information
+        env:
+          VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
+          # Extract URL from Pinggy output
+          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check Pinggy dashboard at https://a.pinggy.io/")
+          
           echo "=========================================="
           echo "✅ macOS VNC is ready!"
           echo ""
-          echo "VNC Address: See Pinggy URL above or https://a.pinggy.io/"
+          echo "VNC Address: $URL"
           echo "Username: $VNC_USER"
-          echo "Password: [REDACTED]"
+          echo "Password: [REDACTED - see GitHub secrets]"
+          echo ""
+          echo "Connect with any VNC client within 6 hours."
           echo "=========================================="
 
-      - name: Keep Alive (Efficient)
-        run: sleep 21600  # 6 hours
+      - name: Keep Runner Alive (6 Hours)
+        run: sleep 21600
 
-      - name: Cleanup
+      - name: Cleanup (Always Runs)
         if: always()
+        env:
+          VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
-          echo "Removing temporary user..."
-          sudo sysadminctl -deleteUser "$VNC_USER" -keepHome 2>/dev/null || true
+          echo "Cleaning up..."
+          sudo sysadminctl -deleteUser "$VNC_USER" 2>/dev/null || true
           sudo pkill -f pinggy || true
+          echo "Cleanup completed."
           
