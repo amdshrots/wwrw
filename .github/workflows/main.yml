@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-13
     
     steps:
-      - name: Validate Secrets
+      - name: Validate Required Secrets
         run: |
           if [ -z "$VNC_PASS" ] || [ -z "$PINGGY_TOKEN" ]; then
             echo "::error::Missing VNC_PASSWORD or PINGGY_TOKEN secrets!"
@@ -36,15 +36,25 @@ jobs:
             -clientopts -setvnclegacy -vnclegacy yes \
             -clientopts -setvncpw -vncpw "$VNC_PASS" -restart -agent || true
 
-      - name: Grant TCC Permissions
+      - name: Grant TCC Permissions (Fixed)
         run: |
           TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
-          COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
-          BASE_VALUES="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1"
-          NULLS=$(printf ',NULL%.0s' $(seq 1 $((COL_COUNT - 6))))
           
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($BASE_VALUES$NULLS);"
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',$BASE_VALUES$NULLS);"
+          # Detect schema
+          COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
+          echo "Detected TCC.db schema with $COL_COUNT columns"
+          
+          # Build base values (6 required fields + correct NULLs)
+          NULL_COUNT=$((COL_COUNT - 6))
+          NULLS=$(printf ',NULL%.0s' $(seq 1 $NULL_COUNT))
+          
+          # Correct: Build full VALUES for each service separately
+          SCREEN_CAPTURE="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1$NULLS"
+          ACCESSIBILITY="'kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,1$NULLS"
+          
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($SCREEN_CAPTURE);"
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($ACCESSIBILITY);"
+          
           sudo launchctl kickstart -k system/com.apple.screensharing
 
       - name: Start Pinggy CLI
@@ -53,7 +63,6 @@ jobs:
         run: |
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
-          # Use token from secrets
           /tmp/pinggy -p 5900 -t tcp "$PINGGY_TOKEN+tcp@eu.free.pinggy.io" > /tmp/pinggy-url.txt 2>&1 &
           sleep 10
 
