@@ -1,39 +1,92 @@
-name: macOS VNC Server
-
+name: macOS RDP Tunnel
 on:
   workflow_dispatch:
-
 jobs:
-  playit-vnc:
+  setup-macos-rdp:
     runs-on: macos-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Check out the repository
+        uses: actions/checkout@v2
 
-      - name: Install dependencies
+      - name: Set up macOS for Remote Access
         run: |
-          brew install tiger-vnc
-          curl -s https://pinggy.io/get.sh | bash
-
-      - name: Start VNC server
-        run: |
-          /usr/local/bin/vncserver :1 -geometry 1024x768 -depth 24
-
-      - name: Get IP Address
-        run: |
-          echo "IP_ADDRESS=$(ipconfig getifaddr en0)" >> $GITHUB_ENV
-
-      - name: Start Pinggy Tunnel
-        run: |
-          pinggy -r localhost:5901 > tunnel.txt &
-          sleep 10
-          echo "Tunnel URL: $(cat tunnel.txt)"
-
-      - name: Print VNC connection details
-        run: | 
-          echo "VNC connection details:"
-          echo "Server:$(cat tunnel.txt)"
-          echo "Password: kaiden"
+          # Enable Screen Sharing (VNC) on macOS
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw p@ssw0rd! -restart -agent -menu
           
+          # Configure firewall to allow VNC connections
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblock /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent
+          
+          # Create a user with a password (if needed)
+          # Note: GitHub Actions runners already have a user, but we'll ensure it has a password
+          echo "p@ssw0rd!" | sudo passwd "$(whoami)"
+          
+          # Set up automatic login for the user
+          sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string "$(whoami)"
+          
+          # Configure the display to stay on and prevent sleep
+          sudo pmset -a displaysleep 0 sleep 0
+
+      - name: Fix Black Screen Issue for macOS Remote Access
+        run: |
+          # Configure the system to allow screen recording for VNC
+          sudo /usr/bin/sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT or REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,1569325200);"
+          
+          # Grant necessary permissions for screen sharing
+          sudo /usr/bin/sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT or REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,1569325200);"
+          
+          # Restart the relevant services
+          sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+          sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+          
+          # Set up the display to ensure it's properly initialized
+          sudo systemsetup -setcomputersleep Never
+          sudo systemsetup -setdisplaysleep Never
+          sudo systemsetup -setharddisksleep Never
+
+      - name: Download and Set Up Pinggy for Tunneling
+        run: |
+          # Download Pinggy CLI
+          curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
+          chmod +x /tmp/pinggy
+          
+          # Create a script to start Pinggy with authentication
+          cat > /tmp/start_pinggy.sh << 'EOF'
+          #!/bin/bash
+          echo "Starting Pinggy tunnel..."
+          /tmp/pinggy -p 5900 -t tcp -k ${{ secrets.PINGGY_TOKEN }} &
+          echo "Pinggy tunnel started with PID: $!"
+          echo "Waiting for tunnel URL..."
+          sleep 5
+          EOF
+          
+          chmod +x /tmp/start_pinggy.sh
+
+      - name: Start Remote Access and Tunnel
+        run: |
+          # Start the Pinggy tunnel
+          /tmp/start_pinggy.sh &
+          
+          # Get the tunnel URL and save it
+          sleep 10
+          TUNNEL_URL=$(curl -s http://127.0.0.1:7259/api/tunnels | grep -o '"public_url":"[^"]*' | cut -d'"' -f4)
+          echo "Tunnel URL: $TUNNEL_URL"
+          echo "::set-output name=tunnel_url::$TUNNEL_URL"
+          
+          # Display connection info
+          echo "======================================"
+          echo "macOS Remote Desktop is now ready!"
+          echo "VNC Address: $TUNNEL_URL"
+          echo "Password: p@ssw0rd!"
+          echo "======================================"
+
+      - name: Keep the GitHub Action Runner Alive
+        run: |
+          # Keep the workflow running to maintain the connection
+          # This will run for about 6 hours (GitHub's limit)
+          for i in {1..21600}; do
+            echo "Keeping alive... $i/21600 seconds"
+            sleep 1
+          done          
       
 
