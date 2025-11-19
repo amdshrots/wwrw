@@ -49,15 +49,19 @@ jobs:
           COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
           echo "Detected TCC.db schema with $COL_COUNT columns"
           
-          # Build dynamic INSERT for any schema (13-18+ columns)
-          VALUES="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1"
-          for i in $(seq 1 $(($COL_COUNT - 5))); do
+          # Build dynamic INSERT with auth_version=1 (NOT NULL) and remaining NULLs
+          # Base values: service, client, client_type, auth_value, auth_reason, auth_version
+          BASE_VALUES="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1"
+          NULL_COUNT=$((COL_COUNT - 6))
+          
+          VALUES="$BASE_VALUES"
+          for i in $(seq 1 $NULL_COUNT); do
             VALUES="$VALUES,NULL"
           done
           
           # Execute for both services
           sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($VALUES);"
-          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',$VALUES);"
+          sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',$BASE_VALUES,$(yes NULL | head -$NULL_COUNT | tr '\n' ',' | sed 's/,$//'));"
           
           # Restart service
           sudo launchctl kickstart -k system/com.apple.screensharing
