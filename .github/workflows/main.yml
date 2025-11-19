@@ -1,36 +1,29 @@
-name: macOS RDP Tunnel (Fixed)
+name: macOS RDP Tunnel (Final Version)
 on:
   workflow_dispatch:
 
 jobs:
   setup-macos-rdp:
-    # Using macos-13 (Ventura) for stability and to match your version.
-    # Change to macos-latest for Sonoma (14) if desired.
-    runs-on: macos-13
+    runs-on: macos-13 # Using macos-13 (Ventura) for stability
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4 # Using a more recent checkout action
+        uses: actions/checkout@v4
 
-      - name: Configure User and Display Settings
+      - name: Create a New User for Remote Access
         run: |
-          # Set the user password non-interactively using dscl
-          # This is the correct way to set a password in a script on macOS
-          echo "p@ssw0rd!" | sudo dscl . -passwd /Users/runner
+          # Create a new user with a known password and grant admin privileges.
+          # This is the most reliable way to ensure you can log in.
+          # The user will be named 'github-user' with the password 'p@ssw0rd!'
+          sudo sysadminctl -addUser github-user -password p@ssw0rd! -admin
 
           # Prevent the Mac from sleeping
           sudo pmset -a displaysleep 0 sleep 0
 
       - name: Enable and Configure Remote Management (VNC)
         run: |
-          # This command enables Screen Sharing and grants all necessary privileges
-          # -activate: Turns on Remote Management
-          # -configure: Applies settings
-          # -access -on: Allows access for all users
-          # -privs -all: Grants all possible privileges (Control, Observe, etc.)
-          # -clientopts -setvnclegacy -vnclegacy yes: Enables standard VNC password auth
-          # -clientopts -setvncpw -vncpw p@ssw0rd!: Sets the VNC password
-          # -restart -agent: Restarts the service to apply changes
+          # This command enables Screen Sharing and grants all necessary privileges.
+          # It will apply to all users, including our new 'github-user'.
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on -privs -all \
             -clientopts -setvnclegacy -vnclegacy yes \
@@ -39,17 +32,12 @@ jobs:
 
       - name: Fix Black Screen by Granting Screen Recording Permissions
         run: |
-          # This is the corrected command to grant permissions.
-          # It now specifies all 17 columns required by the TCC.db in modern macOS.
-          # We do this for both ScreenCapture and Accessibility to ensure full control.
-
-          # Grant Screen Recording permission
+          # This command grants the necessary permissions to prevent the black screen.
+          # It is updated for modern macOS versions.
           sudo /usr/bin/sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,NULL);"
-
-          # Grant Accessibility permission
           sudo /usr/bin/sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,NULL);"
 
-          # Restart the screen sharing service one more time to ensure the new permissions are loaded
+          # Restart the screen sharing service to ensure the new permissions are loaded
           sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
           sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
 
@@ -78,13 +66,13 @@ jobs:
           echo ""
           echo "VNC Address: Use the URL from the Pinggy dashboard"
           echo "VNC Port: 5900"
+          echo "Username: github-user"
           echo "Password: p@ssw0rd!"
           echo "=========================================="
 
       - name: Keep the GitHub Action Runner Alive
         run: |
-          # This loop keeps the workflow running for up to 6 hours,
-          # which is the maximum time for a GitHub Actions job.
+          # This loop keeps the workflow running for up to 6 hours
           echo "Workflow will stay active for 6 hours."
           for i in {1..21600}; do
             sleep 1
