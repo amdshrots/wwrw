@@ -1,21 +1,22 @@
-name: macOS VNC Tunnel (Production-Ready)
+name: macOS VNC Tunnel (Direct Token)
 on:
   workflow_dispatch:
 
 env:
   VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
   VNC_PASS: ${{ secrets.VNC_PASSWORD }}
-  PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
+  # Hardcoded token - will be visible in logs
+  PINGGY_TOKEN: gtcxZbEfnfR+tcp@eu.free.pinggy.io
 
 jobs:
   setup-macos-vnc:
     runs-on: macos-13
     
     steps:
-      - name: Validate Required Secrets
+      - name: Validate Secrets
         run: |
-          if [ -z "$VNC_PASS" ] || [ -z "$PINGGY_TOKEN" ]; then
-            echo "::error::Missing VNC_PASSWORD or PINGGY_TOKEN secrets!"
+          if [ -z "$VNC_PASS" ]; then
+            echo "::error::Missing VNC_PASSWORD secret!"
             exit 1
           fi
 
@@ -36,46 +37,53 @@ jobs:
             -clientopts -setvnclegacy -vnclegacy yes \
             -clientopts -setvncpw -vncpw "$VNC_PASS" -restart -agent || true
 
-      - name: Grant TCC Permissions (Fixed)
+      - name: Grant TCC Permissions
         run: |
           TCC_DB="/Library/Application Support/com.apple.TCC/TCC.db"
-          
-          # Detect schema
           COL_COUNT=$(sudo sqlite3 "$TCC_DB" "PRAGMA table_info(access);" | wc -l | tr -d ' ')
-          echo "Detected TCC.db schema with $COL_COUNT columns"
-          
-          # Build base values (6 required fields + correct NULLs)
           NULL_COUNT=$((COL_COUNT - 6))
           NULLS=$(printf ',NULL%.0s' $(seq 1 $NULL_COUNT))
           
-          # Correct: Build full VALUES for each service separately
           SCREEN_CAPTURE="'kTCCServiceScreenCapture','com.apple.screensharing.agent',0,1,1,1$NULLS"
           ACCESSIBILITY="'kTCCServiceAccessibility','com.apple.screensharing.agent',0,1,1,1$NULLS"
           
           sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($SCREEN_CAPTURE);"
           sudo sqlite3 "$TCC_DB" "INSERT OR REPLACE INTO access VALUES($ACCESSIBILITY);"
-          
           sudo launchctl kickstart -k system/com.apple.screensharing
 
-      - name: Start Pinggy CLI
+      - name: Install and Start Pinggy (Token Visible)
         env:
-          PINGGY_TOKEN: ${{ secrets.PINGGY_TOKEN }}
+          PINGGY_TOKEN: gtcxZbEfnfR+tcp@eu.free.pinggy.io
         run: |
           curl -L https://pinggy.io/pinggy-cli -o /tmp/pinggy
           chmod +x /tmp/pinggy
-          /tmp/pinggy -p 5900 -t tcp "$PINGGY_TOKEN+tcp@eu.free.pinggy.io" > /tmp/pinggy-url.txt 2>&1 &
+          
+          echo "Starting Pinggy tunnel..."
+          /tmp/pinggy -p 5900 -t tcp "$PINGGY_TOKEN" > /tmp/pinggy-url.txt 2>&1 &
           sleep 10
+          
+          # Display raw output for debugging
+          echo "---Raw Pinggy Output---"
+          cat /tmp/pinggy-url.txt
+          echo "---End Output---"
+          
+          # Extract and show URL
+          URL=$(grep -E 'tcp://[^ ]+' /tmp/pinggy-url.txt | head -1 || echo "URL extraction failed")
+          echo "=========================================="
+          echo "🌐 TUNNEL ADDRESS: $URL"
+          echo "=========================================="
+          echo "::notice::VNC Tunnel: $URL"
 
       - name: Display Connection Info
         env:
           VNC_USER: ${{ secrets.VNC_USERNAME || 'github-remote' }}
         run: |
-          URL=$(grep -o 'tcp://[^:]*:[0-9]*' /tmp/pinggy-url.txt || echo "Check Pinggy dashboard")
           echo "=========================================="
           echo "✅ VNC Ready!"
-          echo "Address: $URL"
-          echo "User: $VNC_USER"
+          echo "Username: $VNC_USER"
           echo "Password: [REDACTED]"
+          echo ""
+          echo "CHECK PREVIOUS STEP FOR TUNNEL ADDRESS!"
           echo "=========================================="
 
       - name: Keep Alive (6h)
